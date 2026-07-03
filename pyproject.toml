@@ -1,7 +1,7 @@
 [project]
-name = "france-solar-grid-integration"
+name = "integration-solaire-reseau-france"
 version = "0.1.0"
-description = "Add your description here"
+description = "Analyse de l'intégration du solaire dans le réseau électrique français (données RTE/Enedis via ODRE)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

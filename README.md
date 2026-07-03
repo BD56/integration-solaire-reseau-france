@@ -38,7 +38,7 @@ uv run python src/download.py
 ## 🗂️ Structure
 
 ```
-france-solar-grid-integration/
+integration-solaire-reseau-france/
 ├── data/                 # données téléchargées (non versionnées)
 ├── src/
 │   └── download.py       # récupération des données via l'API ODRE
