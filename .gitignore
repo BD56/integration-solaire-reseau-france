@@ -16,5 +16,6 @@ wheels/
 # Notebooks
 .ipynb_checkpoints/
 
-# OS
+# OS / outils
 .DS_Store
+.Rhistory
