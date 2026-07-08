@@ -19,3 +19,6 @@ wheels/
 # OS / outils
 .DS_Store
 .Rhistory
+
+# Rendus HTML de la doc (régénérés localement depuis les .md)
+docs/*.html
