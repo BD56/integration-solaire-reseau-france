@@ -6,6 +6,100 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-26 (suite) : nettoyage revu, TCO reconstruit, puissance installée déduite
+
+Séance consacrée à la compréhension des données plutôt qu'à la production de résultats. Plusieurs affirmations de la séance précédente ont été corrigées après vérification.
+
+### 1. Changements d'heure : mécanisme établi, traitement changé
+
+La cause des doublons d'horodatage était juste, mais le mécanisme décrit était faux. Cinq contrôles convergents : les 14 dates concernées sont toutes un **dernier dimanche de mars**, toutes à **01:00 et 01:30 UTC**, avec **56 lignes par région pour les 12 régions**, **zéro doublon** si l'on regarde la colonne `heure` de la source, et **zéro doublon en octobre**.
+
+Le mécanisme réel : deux **créneaux locaux différents** (02:00 et 03:00) tombent sur le **même instant UTC**, puisque 02:00 CET et 03:00 CEST désignent la même seconde. Ce ne sont pas deux fois la même ligne.
+
+La source publie **toujours 48 créneaux de 30 minutes par jour**, y compris les jours de bascule, ce qui produit deux anomalies opposées :
+
+| | Mars | Octobre |
+|---|---|---|
+| Horloge locale | saute 02:00 vers 03:00 | recule 03:00 vers 02:00 |
+| L'heure 02:00 à 02:59 | n'existe pas | a lieu deux fois |
+| Effet | 2 créneaux **fictifs** publiés | 1 occurrence réelle **non publiée** |
+| Résultat | **doublon** en UTC | **trou** en UTC (saut de 1 h 30) |
+
+**Décision** : on ne déduplique plus sur l'ordre du fichier (`keep="first"`, arbitraire), on supprime explicitement les créneaux locaux 02:00 et 02:30 du dimanche de mars. Règle appliquée : parmi deux lignes partageant le même instant UTC, retirer celle dont l'étiquette locale est la plus petite. Résultat vérifié : 336 lignes retirées, le jour de bascule retrouve ses **46 créneaux** (durée réelle de 23 heures), zéro doublon restant.
+
+Rien n'est comblé en mars : **aucune donnée ne manque**, le jour compte bien 46 horodatages UTC distincts. Combler reviendrait à inventer des observations pour un moment qui n'a pas existé.
+
+Sur les 336 lignes en cause, **29,2 % portaient des valeurs différentes** (écart médian de 128 MW sur la consommation, soit 3,25 %, jusqu'à 13,7 %). Le choix précédent n'était donc pas anodin, seulement négligeable en volume (0,0035 % du jeu).
+
+⚠️ **À reprendre pour un futur volet de prévision** : à cause du trou d'octobre, la série UTC **n'est pas une grille régulière** (un saut de 1 h 30 par an et par région). Tout traitement supposant un pas constant (décalages, autocorrélation, modèle de série temporelle) butera dessus. Sans effet sur les profils descriptifs, et sans effet sur le solaire (0,07 MW en moyenne à cette heure, il fait nuit). Si une grille régulière devient nécessaire, l'interpolation est acceptable (erreur médiane mesurée à 65 MW, soit 3,2 % du niveau nocturne) **à condition de marquer les lignes imputées**.
+
+### 2. `ND` et `-` sont deux choses différentes
+
+| Marqueur | Lignes | Régions | Reste de la ligne |
+|---|---|---|---|
+| `ND` | 12 | les 12 | `consommation` et `solaire` **vides** |
+| `-` | 96 | 2 (Centre-Val de Loire, Île-de-France) | `consommation` et `solaire` **renseignés** |
+
+`ND` désigne une ligne entièrement vide, supprimée de toute façon par le filtre sur `consommation`. `-` désigne une ligne valide où seul l'éolien manque : ce sont exactement les 96 lignes où `demande_nette` reste indéfinie. **Point ouvert** : s'agit-il de « non mesuré » (valeur manquante correcte) ou de « pas de parc éolien » (auquel cas zéro serait plus juste) ? Non tranché.
+
+### 3. Deux définitions de la demande nette
+
+`demande_nette = consommation − solaire − eolien` suivait la convention du secteur, mais mélange deux phénomènes alors que le projet porte sur le solaire. Effet constaté : les bandes très larges des Hauts-de-France dans les profils saisonniers viennent de l'éolien, pas du solaire (1,8 % de couverture), ce qui faussait partiellement la comparaison entre régions.
+
+**Décision** : calculer les deux côte à côte plutôt que d'en imposer une. `demande_nette` (convention) et `demande_nette_solaire = consommation − solaire` (objet d'étude). L'écart entre les deux mesure exactement l'apport de l'éolien, au lieu de le dissoudre.
+
+### 4. TCO reconstruit, puissance installée déduite
+
+Les colonnes `tco_` et `tch_` sont absentes de **2013 à 2019** (0 % renseigné) et présentes à 100 % de **2020 à 2026**. RTE a commencé à les publier en 2020.
+
+- **TCO reconstructible exactement.** `tco_filiere = 100 × filiere / consommation`, vérifié sur toutes les filières : écart absolu médian de 0,003 point, maximum 0,01, soit de l'arrondi. Reconstruit pour 2013-2019 par `completer_tco()` : **1 472 076 lignes**, complétude de 47 % à **100 %**. Les valeurs publiées ne sont jamais écrasées, et les lignes recalculées sont marquées par la colonne **`tco_reconstruit`**. ⚠️ N'apporte **aucune information nouvelle** : c'est une fonction déterministe de colonnes déjà présentes.
+- **TCH non reconstructible** (la puissance installée n'est pas fournie), mais **inversible** : `puissance installée = 100 × filiere / tch`. Contrairement au TCO, c'est une information réellement nouvelle. Fonction `capacite_installee()`, disponible sur **2020-2026 seulement**.
+
+Puissance solaire installée déduite (MW, médiane annuelle) :
+
+| Année | Nouvelle-Aquitaine | Occitanie | Hauts-de-France | Île-de-France |
+|---|---|---|---|---|
+| 2020 | 2 546 | 2 057 | 167 | 125 |
+| 2022 | 3 444 | 2 758 | 350 | 185 |
+| 2024 | 4 488 | 3 629 | 554 | 322 |
+| 2026 | 6 596 | 5 087 | 1 036 | 510 |
+
+Piste à confirmer : la croissance la plus rapide en **relatif** est dans les régions les **moins** ensoleillées (Hauts-de-France ×6,2, Île-de-France ×4,1 contre ×2,5 au Sud), alors que les niveaux absolus restent dominés par le Sud. Utile pour la sous-question 2 et pour la phase 2.
+
+### 5. Complétude du jeu
+
+Par ligne : moyenne **67,4 %**, médiane **46,9 %**. Par colonne : 13 colonnes à 100 %, `nucleaire` à 75,0 %, `pompage` à 73,7 %, les `tco_`/`tch_` autour de 47,5 % (avant reconstruction), `eolien_terrestre`/`offshore` et les batteries à 40,0 %, `tch_nucleaire` à 27,7 %, `column_30` à 0 %.
+
+⚠️ `eolien` affiche 100 % alors qu'elle contient `ND` et `-` : ce sont des valeurs manquantes déguisées en texte, que `notna()` ne voit pas. Complétude réelle 99,996 %.
+
+### 6. Deux affirmations corrigées
+
+- **« Le pic solaire est à 13 h locale en juin comme en décembre » était faux.** Mesure au pas de 30 minutes (barycentre de la courbe, Nouvelle-Aquitaine, 2023-2025) : environ **13 h en décembre** contre **14 h en juin**. La bascule se produit entre mars et avril puis entre octobre et novembre, c'est-à-dire **exactement aux dates de changement d'heure**. Ce n'est donc pas un effet de saison mais l'heure légale qui bouge. L'erreur venait d'un arrondi à l'heure entière sur un échantillon trop agrégé.
+- **« La sous-question 1 est traitée » était trop fort.** Le matériel existe (profils, figures, indicateurs) mais ne porte que sur 2 régions sur 12 et sur 2023-2025, n'utilise qu'une des deux définitions de la demande nette, a été produit avant la correction du nettoyage, et n'a pas été validé par Bryan. Non close.
+
+### 7. Fichier de contrôles : reporté
+
+Un fichier `src/controles.py` renvoyant un tableau de verdicts avait été décidé, puis **reporté**. Raison : un fichier de contrôles fige ce qu'on croit savoir des données ; l'erreur sur le pic solaire montre que la compréhension n'est pas encore stable, et graver des croyances fausses est pire que pas de contrôles (fausse assurance ou fausses alertes). Son utilité est de plus nulle tant qu'on ne retélécharge pas régulièrement.
+
+Deux enseignements conservés pour le jour où il sera écrit :
+
+- **préférer les invariants aux comptages figés.** « Tous les doublons tombent un dernier dimanche de mars à 01:00 ou 01:30 UTC » reste vrai quand le jeu grandit et teste réellement l'hypothèse ; « il y a exactement 336 doublons » deviendra faux en mars 2027 et déclenchera une fausse alerte.
+- **un tableau de verdicts plutôt que des `assert`**, pour lister tous les problèmes au lieu de s'arrêter au premier.
+
+### 8. Documentation
+
+`docs/dictionnaire_donnees.md` enrichi d'une colonne **« En clair »** dans chaque tableau (explication en langage courant), d'une section décrivant les **9 colonnes calculées** par `preparation.py`, et de deux précisions qui prêtaient à confusion : les filières sont des **puissances instantanées en MW** et non des quantités d'énergie, et le **seul stockage observable** du jeu est le pompage, les colonnes de batterie étant vides.
+
+### 9. Points ouverts
+
+- Nature des 96 lignes `-` de l'éolien : non mesuré ou parc absent (section 2).
+- Sous-question 1 à clore réellement : étendre au-delà de 2 régions et de 2023-2025, exploiter `demande_nette_solaire`, régénérer les figures après correction du nettoyage, et faire valider les résultats par Bryan.
+- Sous-questions 2 (évolution pluriannuelle) et 3 (équilibrage) non commencées.
+- Le code de faisabilité de l'entrée précédente n'est toujours pas porté dans le dépôt.
+- Puissance installée avant 2020 : nécessiterait une source externe (registre des installations d'ODRE) plutôt qu'une extrapolation à rebours sur sept ans.
+
+---
+
 ## 2026-07-26 : sous-question 1 traitée, profils saisonniers de demande nette
 
 Première sous-question descriptive traitée. Le dépôt passe de « aucun graphique produit » à trois figures et un module de préparation partagé.
