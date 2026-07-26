@@ -6,6 +6,56 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-26 (suite 2) : les 96 lignes `-` de l'éolien tranchées, panorama éolien
+
+Referme un point ouvert de l'entrée précédente.
+
+### 1. Les 96 lignes `-` sont deux pannes de mesure, pas une absence de parc
+
+Elles ne sont pas éparpillées : ce sont **deux blocs contigus de 48 créneaux**, soit une journée complète chacun.
+
+| Région | Lignes | Dates |
+|---|---|---|
+| Centre-Val de Loire | 48 | 27 et 28 décembre 2013 |
+| Île-de-France | 48 | 8 et 9 mai 2013 |
+
+Les valeurs encadrant le trou tranchent la question :
+
+| Région | 6 valeurs avant | 6 valeurs après |
+|---|---|---|
+| Centre-Val de Loire | 446, 474, 491, 535, 555, **557** | **620**, 628, 612, 624, 621, 584 |
+| Île-de-France | 0, 0, 0, 1, 1, 4 | 3, 7, 4, 4, 5, 1 |
+
+Le Centre-Val de Loire produisait 550 MW juste avant et 620 MW juste après : le parc tournait à plein régime.
+
+**Décision** : la valeur manquante est le traitement correct, le code actuel est donc juste et ne change pas. **Ne jamais remplacer par zéro** : cela fabriquerait un effondrement de production de 24 heures suivi d'un retour instantané. Pour l'Île-de-France l'enjeu est nul, elle produisait 4 MW en moyenne en 2013.
+
+Poids : 96 lignes sur 2,8 millions, soit **0,0034 %**. À documenter, pas à corriger.
+
+### 2. Panorama de l'éolien par région (production moyenne, MW)
+
+| Région | 2013 | 2020 | 2025 |
+|---|---|---|---|
+| Hauts-de-France | 371 | 1 322 | **1 429** |
+| Grand Est | 420 | 1 000 | 1 066 |
+| Pays de la Loire | 112 | 273 | 556 |
+| Bretagne | 160 | 256 | 484 |
+| Nouvelle-Aquitaine | 81 | 274 | 469 |
+| Normandie | 110 | 233 | 430 |
+| Occitanie | 250 | 415 | **382** |
+| Centre-Val de Loire | 173 | 355 | 372 |
+| Bourgogne-Franche-Comté | 32 | 221 | 252 |
+| Auvergne-Rhône-Alpes | 84 | 131 | 160 |
+| Île-de-France | 4 | 30 | 35 |
+| Provence-Alpes-Côte d'Azur | 13 | 11 | 29 |
+
+Deux constats utiles à la suite du projet :
+
+- **La géographie de l'éolien est l'inverse de celle du solaire.** Les Hauts-de-France dominent l'éolien (1 429 MW) alors qu'ils sont parmi les derniers au solaire (1,8 % de couverture). Cela confirme directement l'explication des bandes très larges observées dans leurs profils saisonniers : c'est le vent, pas le soleil. La décision de calculer `demande_nette_solaire` séparément est donc justifiée par les données, et non seulement par principe.
+- **L'Occitanie recule** (415 MW en 2020 contre 382 en 2025), seule région dans ce cas. À vérifier avant d'en conclure quoi que ce soit : il peut s'agir d'une année 2020 particulièrement ventée plutôt que d'une baisse réelle du parc. **Point ouvert.**
+
+---
+
 ## 2026-07-26 (suite) : nettoyage revu, TCO reconstruit, puissance installée déduite
 
 Séance consacrée à la compréhension des données plutôt qu'à la production de résultats. Plusieurs affirmations de la séance précédente ont été corrigées après vérification.
@@ -92,7 +142,7 @@ Deux enseignements conservés pour le jour où il sera écrit :
 
 ### 9. Points ouverts
 
-- Nature des 96 lignes `-` de l'éolien : non mesuré ou parc absent (section 2).
+- ~~Nature des 96 lignes `-` de l'éolien : non mesuré ou parc absent (section 2).~~ **Tranché**, voir l'entrée « suite 2 » : deux pannes de mesure, la valeur manquante est correcte.
 - Sous-question 1 à clore réellement : étendre au-delà de 2 régions et de 2023-2025, exploiter `demande_nette_solaire`, régénérer les figures après correction du nettoyage, et faire valider les résultats par Bryan.
 - Sous-questions 2 (évolution pluriannuelle) et 3 (équilibrage) non commencées.
 - Le code de faisabilité de l'entrée précédente n'est toujours pas porté dans le dépôt.

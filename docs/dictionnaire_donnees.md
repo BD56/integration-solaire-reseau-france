@@ -33,7 +33,7 @@ le débit électrique à cet instant.
 |---|---|---|---|
 | `consommation` | MW | L'électricité **appelée** par la région à cet instant : logements, entreprises, transports. | |
 | `solaire` ⭐ | MW | L'électricité produite par les **panneaux photovoltaïques**. Nulle la nuit, maximale en milieu de journée. | Cœur du projet |
-| `eolien` | MW | L'électricité produite par les **éoliennes**, terrestres et en mer confondues. | ⚠️ **stockée en texte** ; `'ND'` et `'-'` valent manquant |
+| `eolien` | MW | L'électricité produite par les **éoliennes**, terrestres et en mer confondues. Géographie inverse de celle du solaire : les régions du Nord dominent. | ⚠️ **stockée en texte** ; `'ND'` et `'-'` valent manquant, voir les points de vigilance |
 | `eolien_terrestre` | MW | La part produite par les éoliennes **à terre**. | |
 | `eolien_offshore` | MW | La part produite par les éoliennes **en mer**. | Faible, déploiement récent |
 | `nucleaire` | MW | L'électricité produite par les **centrales nucléaires** situées dans la région. | ~75 % renseigné : 5 régions n'ont aucune centrale, ce n'est pas une donnée manquante |
@@ -108,7 +108,11 @@ n'a pas ce problème, le solaire étant renseigné partout.
 
 - **Fuseau horaire, piège actif** : `date_heure` est en **UTC**, alors que `date` et `heure` sont en **heure locale**. Raisonner sur l'heure UTC fabrique une fausse déformation saisonnière : le pic solaire moyen y tombe à 11 h en juin contre 12 h en décembre, un décalage dû au seul changement d'heure (en heure locale il est à 13 h dans les deux cas). Utiliser `heure_decimale`, dérivée de `date_heure_locale` par `src/preparation.py`, pour tout profil journalier.
 - **Début de série vide** : les toutes premières lignes (jan. 2013) sont entièrement à `NaN`, il faut filtrer sur `consommation` renseignée.
-- **`eolien` en texte** : à convertir en numérique ; `'ND'` et `'-'` deviennent des valeurs manquantes.
+- **`eolien` en texte** : à convertir en numérique. Les deux marqueurs ne désignent pas la même chose :
+  - **`ND`, 12 lignes** (les 12 régions, 1er janvier 2013) : la ligne entière est vide. Elles disparaissent de toute façon avec le filtre sur `consommation`.
+  - **`-`, 96 lignes** : lignes par ailleurs valides où seul l'éolien manque. Ce sont **deux pannes de mesure d'une journée complète** (48 créneaux contigus chacune) : Centre-Val de Loire les 27 et 28 décembre 2013, Île-de-France les 8 et 9 mai 2013.
+  - ⚠️ **Ne pas remplacer par zéro.** Le Centre-Val de Loire produisait 550 MW juste avant le trou et 620 MW juste après : le parc tournait à plein régime. Un zéro fabriquerait un effondrement de production de 24 heures suivi d'un retour instantané. La valeur manquante est le traitement correct, et c'est ce que fait `src/preparation.py`.
+  - Conséquence : ce sont exactement les 96 lignes où `demande_nette` reste indéfinie.
 - **Batteries vides** : `stockage_batterie` / `destockage_batterie` inexploitables (voir ci-dessus).
 - **Petites valeurs négatives** sur certaines productions (`thermique`, `nucleaire`, `solaire`, `hydraulique` : quelques MW négatifs) : artefacts de mesure/consolidation (auto-consommation des centrales), marginaux.
 - **`tco_`/`tch_` peuvent dépasser 100 %** : normal pour le TCO (à un instant, une région peu consommatrice et bien ensoleillée peut produire plus que sa consommation locale, surplus exporté) ; pour le TCH, lié à la référence de capacité installée.
