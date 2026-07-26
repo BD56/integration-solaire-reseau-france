@@ -6,9 +6,9 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
-## 2026-07-26 (suite 2) : les 96 lignes `-` de l'éolien tranchées, panorama éolien
+## 2026-07-26 (suite 2) : lignes `-` de l'éolien tranchées, valeurs négatives expliquées
 
-Referme un point ouvert de l'entrée précédente.
+Referme deux points de la phase exploratoire, et en ouvre un nouveau : une rupture de méthode en 2020.
 
 ### 1. Les 96 lignes `-` sont deux pannes de mesure, pas une absence de parc
 
@@ -31,6 +31,32 @@ Le Centre-Val de Loire produisait 550 MW juste avant et 620 MW juste après : le
 **Décision** : la valeur manquante est le traitement correct, le code actuel est donc juste et ne change pas. **Ne jamais remplacer par zéro** : cela fabriquerait un effondrement de production de 24 heures suivi d'un retour instantané. Pour l'Île-de-France l'enjeu est nul, elle produisait 4 MW en moyenne en 2013.
 
 Poids : 96 lignes sur 2,8 millions, soit **0,0034 %**. À documenter, pas à corriger.
+
+### 1 bis. Valeurs négatives de production : physiques, mais rupture de méthode en 2020
+
+| Filière | Lignes < 0 | % | Minimum | Médiane des négatifs |
+|---|---|---|---|---|
+| `thermique` | 78 327 | 2,79 % | −83 | −3 |
+| `solaire` | 33 429 | 1,19 % | −23 | −1 |
+| `nucleaire` | 444 | 0,02 % | −144 | −87 |
+| `eolien` | 619 | 0,02 % | −6 | −1 |
+| `hydraulique` | 8 | 0,00 % | −6 | −1 |
+| `bioenergies` | 0 | 0 % | | jamais négative |
+
+**Ce ne sont pas des erreurs** : ce sont les installations qui consomment au lieu de produire (auxiliaires d'une centrale à l'arrêt, onduleurs des panneaux la nuit). Deux indices le confirment :
+
+- le solaire n'est **jamais** négatif entre 10 h et 14 h. Répartition horaire locale : 16 812 lignes entre 0 h et 6 h, 5 254 entre 6 h et 10 h, **0** entre 10 h et 14 h, 123 entre 14 h et 18 h, 11 240 entre 18 h et 24 h ;
+- la médiane du nucléaire négatif, −87 MW, correspond à l'ordre de grandeur des auxiliaires d'un réacteur à l'arrêt.
+
+Les amplitudes sont faibles face aux niveaux habituels : −144 MW contre 6 075 MW de production moyenne pour le nucléaire, −23 contre 269 pour le solaire.
+
+**Décision** : ne pas les corriger. Elles ont un sens physique, leur poids est négligeable, et pour la demande nette un solaire négatif l'augmente légèrement, ce qui est correct.
+
+⚠️ **Constat le plus important : aucune valeur négative n'apparaît après 2019**, toutes filières confondues. C'est **la même année** où RTE commence à publier les `tco_` et `tch_`. Tout indique un **changement de convention** côté RTE, qui aurait cessé de reporter la consommation propre des installations.
+
+**Conséquence pour la sous-question 2** : elle compare 2013 à 2026, donc de part et d'autre de cette rupture. Une évolution observée sur toute la période peut refléter un changement comptable plutôt qu'un phénomène réel. À traiter explicitement, par exemple en vérifiant que les conclusions tiennent sur la seule période 2020-2026.
+
+Deux concentrations notées au passage, non expliquées : le solaire négatif est à 99,8 % en Nouvelle-Aquitaine, et le thermique négatif se concentre en Île-de-France et en Occitanie. **Point ouvert**, sans doute lié au parc de ces régions.
 
 ### 2. Panorama de l'éolien par région (production moyenne, MW)
 

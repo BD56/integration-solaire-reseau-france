@@ -114,7 +114,20 @@ n'a pas ce problème, le solaire étant renseigné partout.
   - ⚠️ **Ne pas remplacer par zéro.** Le Centre-Val de Loire produisait 550 MW juste avant le trou et 620 MW juste après : le parc tournait à plein régime. Un zéro fabriquerait un effondrement de production de 24 heures suivi d'un retour instantané. La valeur manquante est le traitement correct, et c'est ce que fait `src/preparation.py`.
   - Conséquence : ce sont exactement les 96 lignes où `demande_nette` reste indéfinie.
 - **Batteries vides** : `stockage_batterie` / `destockage_batterie` inexploitables (voir ci-dessus).
-- **Petites valeurs négatives** sur certaines productions (`thermique`, `nucleaire`, `solaire`, `hydraulique` : quelques MW négatifs) : artefacts de mesure/consolidation (auto-consommation des centrales), marginaux.
+- **Valeurs négatives de production** : elles ne sont **pas des erreurs**, ce sont les installations qui **consomment** au lieu de produire (auxiliaires d'une centrale à l'arrêt, onduleurs des panneaux la nuit). Ne pas les ramener à zéro : elles ont un sens physique, et pour la demande nette un solaire négatif l'augmente légèrement, ce qui est correct.
+
+  | Filière | Lignes < 0 | % | Minimum | Médiane des négatifs |
+  |---|---|---|---|---|
+  | `thermique` | 78 327 | 2,79 % | −83 | −3 |
+  | `solaire` | 33 429 | 1,19 % | −23 | −1 |
+  | `nucleaire` | 444 | 0,02 % | −144 | −87 |
+  | `eolien` | 619 | 0,02 % | −6 | −1 |
+  | `hydraulique` | 8 | 0,00 % | −6 | −1 |
+  | `bioenergies` | 0 | 0 % | | jamais négative |
+
+  Deux indices confirment la lecture physique : le solaire n'est **jamais** négatif entre 10 h et 14 h (84 % des cas surviennent la nuit), et la médiane du nucléaire négatif, −87 MW, correspond à l'ordre de grandeur des auxiliaires d'un réacteur à l'arrêt. Les amplitudes restent faibles face aux niveaux habituels (−144 MW contre 6 075 MW de production moyenne pour le nucléaire).
+
+- ⚠️ **Rupture de méthode en 2020, à retenir pour toute analyse pluriannuelle.** **Aucune** valeur négative n'apparaît après 2019, toutes filières confondues. C'est la même année où RTE commence à publier les `tco_` et `tch_`. Tout indique un changement de convention côté RTE, qui aurait cessé de reporter la consommation propre des installations. Conséquence : une évolution observée entre 2013 et 2026 peut refléter ce changement comptable plutôt qu'un phénomène réel. À prendre en compte pour la sous-question 2.
 - **`tco_`/`tch_` peuvent dépasser 100 %** : normal pour le TCO (à un instant, une région peu consommatrice et bien ensoleillée peut produire plus que sa consommation locale, surplus exporté) ; pour le TCH, lié à la référence de capacité installée.
 - **Doublons et trous d'horodatage** : ~28 doublons et ~13 petits trous par région (changements d'heure ou relevés manquants), marginaux (~0,02 %).
 - **`nucleaire`** : ~75 % renseigné (les régions sans centrale nucléaire sont à vide, ce n'est pas une donnée manquante).
