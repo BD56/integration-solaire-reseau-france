@@ -14,54 +14,93 @@ Référence des variables du jeu de données `eco2mix-regional-cons-def`.
 
 ## 🏷️ Repères (identifiants, temps)
 
-| Variable | Intitulé | Type | Description |
-|---|---|---|---|
-| `code_insee_region` | Code INSEE région | texte | Code INSEE de la région (✅ doc) |
-| `libelle_region` | Région | texte | Nom de la région (12 régions métropolitaines) |
-| `nature` | Nature | texte | `Données définitives` (2013 à 2024, validées) ou `Données consolidées` (récentes, susceptibles de révision) |
-| `date` | Date | texte | Date `AAAA-MM-JJ` |
-| `heure` | Heure | texte | Heure `HH:MM` |
-| `date_heure` | Date - Heure | datetime (UTC) | Horodatage complet (**seul champ déjà typé en date**) |
+| Variable | Type | En clair |
+|---|---|---|
+| `code_insee_region` | texte | Le numéro officiel de la région (ex. `75` pour la Nouvelle-Aquitaine). |
+| `libelle_region` | texte | Le nom de la région. Il y en a 12, la métropole seulement. |
+| `nature` | texte | Dit si la mesure est **définitive** (validée, jusqu'à 2024) ou **consolidée** (récente, encore susceptible d'être corrigée). |
+| `date` | texte | La date, **au calendrier français** (`AAAA-MM-JJ`). |
+| `heure` | texte | L'heure **qu'affichait une horloge en France** (`HH:MM`), donc décalée de +1 h en hiver et +2 h en été. |
+| `date_heure` | datetime (UTC) | Le **même instant**, mais exprimé en heure universelle, qui ne subit pas les changements d'heure. Seul champ déjà typé en date. |
 
 ## ⚡ Consommation & production par filière (MW, pas de 30 min)
 
-| Variable | Intitulé | Unité | Description | Remarques |
-|---|---|---|---|---|
-| `consommation` | Consommation | MW | Demande d'électricité de la région | |
-| `solaire` ⭐ | Solaire | MW | Production photovoltaïque | Cœur du projet |
-| `eolien` | Eolien | MW | Production éolienne totale | ⚠️ **stocké en texte** ; `'ND'`/`'-'` = manquant ; = terrestre + offshore |
-| `eolien_terrestre` | Eolien terrestre | MW | Part terrestre de l'éolien | |
-| `eolien_offshore` | Eolien offshore | MW | Part en mer de l'éolien | Faible (déploiement récent) |
-| `nucleaire` | Nucléaire | MW | Production nucléaire | ~75 % renseigné (régions sans centrale = vide) |
-| `hydraulique` | Hydraulique | MW | Production hydraulique | |
-| `thermique` | Thermique | MW | Production thermique fossile (gaz, charbon, fioul) | |
-| `bioenergies` | Bioénergies | MW | Production à partir de biomasse/déchets | |
-| `pompage` | Pompage | MW | Puissance consommée par les pompes des **STEP** (stockage hydraulique) | **Toujours ≤ 0** (c'est une charge). ✅ données (100 % ≤ 0) |
-| `ech_physiques` | Ech. physiques | MW | Solde des échanges avec les régions limitrophes | **< 0 = export, > 0 = import**. ✅ doc + données (46 % / 54 %) |
+Toutes ces colonnes sont une **puissance instantanée en mégawatts**, mesurée toutes
+les 30 minutes. Ce n'est pas une quantité d'énergie consommée sur la période, mais
+le débit électrique à cet instant.
+
+| Variable | Unité | En clair | Remarques |
+|---|---|---|---|
+| `consommation` | MW | L'électricité **appelée** par la région à cet instant : logements, entreprises, transports. | |
+| `solaire` ⭐ | MW | L'électricité produite par les **panneaux photovoltaïques**. Nulle la nuit, maximale en milieu de journée. | Cœur du projet |
+| `eolien` | MW | L'électricité produite par les **éoliennes**, terrestres et en mer confondues. | ⚠️ **stockée en texte** ; `'ND'` et `'-'` valent manquant |
+| `eolien_terrestre` | MW | La part produite par les éoliennes **à terre**. | |
+| `eolien_offshore` | MW | La part produite par les éoliennes **en mer**. | Faible, déploiement récent |
+| `nucleaire` | MW | L'électricité produite par les **centrales nucléaires** situées dans la région. | ~75 % renseigné : 5 régions n'ont aucune centrale, ce n'est pas une donnée manquante |
+| `hydraulique` | MW | L'électricité produite par l'**eau** : barrages, centrales au fil de l'eau, et **turbinage des STEP** (voir `pompage`). | |
+| `thermique` | MW | L'électricité produite en **brûlant** du gaz, du charbon ou du fioul. Pilotable, sert d'ajustement. | |
+| `bioenergies` | MW | L'électricité produite à partir de **biomasse, biogaz et déchets**. | Faible et très stable |
+| `pompage` | MW | Le **stockage hydraulique** en train de se remplir. Une STEP a deux bassins : quand il y a de l'électricité en trop, on s'en sert pour **pomper** l'eau vers le bassin haut. C'est donc une consommation. | **Toujours ≤ 0** (vérifié : 100 %). ⚠️ Seul le remplissage figure ici ; la restitution est fondue dans `hydraulique` |
+| `ech_physiques` | MW | Le solde des **échanges avec les régions voisines**. C'est ce qui rend le réseau interconnecté : une région peut consommer ce qu'elle ne produit pas. | **< 0 : la région exporte. > 0 : elle importe.** Vérifié : 46 % / 54 % |
 
 ## 🔋 Stockage par batterie
 
-| Variable | Intitulé | Description | Remarques |
-|---|---|---|---|
-| `stockage_batterie` | Stockage batterie | Énergie stockée en batterie | ❌ **Toujours à 0 dans ce jeu régional, inexploitable** (✅ données : min = max = 0) |
-| `destockage_batterie` | Déstockage batterie | Énergie restituée par les batteries | ❌ idem |
+| Variable | En clair | Remarques |
+|---|---|---|
+| `stockage_batterie` | L'électricité que les batteries sont en train d'**absorber**. | ❌ **Toujours à 0 dans ce jeu régional, inexploitable** (vérifié : min = max = 0) |
+| `destockage_batterie` | L'électricité que les batteries **restituent** au réseau. | ❌ idem |
+
+Conséquence pratique : le **seul stockage observable** dans ce jeu est le pompage
+hydraulique (`pompage`), pas les batteries.
 
 ## 📊 Taux par filière (%)
 
 Deux indicateurs, disponibles pour : thermique, nucléaire, éolien, solaire, hydraulique, bioénergies.
 
-| Préfixe | Nom complet | Définition | Vérification |
-|---|---|---|---|
-| `tco_…` | **Taux de COuverture** | Part de la filière dans la **consommation** de la région | ✅ doc **+ données** : `tco_solaire` = `100 × solaire / consommation` (écart médian 0.000, corrélation 1.0000) |
-| `tch_…` | **Taux de CHarge** (facteur de charge) | Production rapportée à la **capacité installée et en service** de la filière | ✅ doc RTE (non vérifiable sur les données : la capacité installée n'est pas fournie) |
+| Préfixe | En clair | Formule et vérification |
+|---|---|---|
+| `tco_…` | **Taux de couverture** : quelle **part de la consommation** cette filière couvre à cet instant. Exemple : `tco_solaire` = 30 % signifie que le solaire fournissait 30 % de l'électricité appelée. | `100 × filiere / consommation`. ✅ doc **et** données : écart médian 0,003 point, maximum 0,01, pour toutes les filières |
+| `tch_…` | **Taux de charge** : à quel point le parc **tourne par rapport à sa taille**. Élevé en plein soleil, nul la nuit. Ne dépend pas de la consommation. | `100 × filiere / puissance installée`. ✅ doc RTE, non vérifiable directement : la puissance installée n'est pas fournie |
 
 Exemples : `tco_solaire`, `tch_solaire`, `tco_eolien`, `tch_eolien`, etc.
 
+**La différence en une phrase** : le TCO se compare à la **demande**, le TCH se
+compare à la **capacité de production**.
+
+Deux points utiles, tous deux exploités par `src/preparation.py` :
+
+- Les deux séries n'existent qu'à partir de **2020** (0 % renseigné avant, 100 % après).
+  Le TCO étant une formule exacte, il est **reconstruit** pour 2013-2019, et les
+  lignes concernées sont marquées par la colonne `tco_reconstruit`.
+- Le TCH ne peut pas être reconstruit, mais il peut être **inversé** pour en déduire
+  la puissance installée : `puissance installée = 100 × filiere / tch`. C'est une
+  information réellement nouvelle (la taille du parc n'est nulle part ailleurs dans
+  le jeu), disponible sur **2020-2026 seulement**. Voir `capacite_installee()`.
+
+## 🧮 Colonnes calculées
+
+Ces colonnes ne viennent pas de la source : elles sont fabriquées par
+`src/preparation.py` au chargement.
+
+| Variable | Unité | En clair |
+|---|---|---|
+| `date_heure_locale` | datetime | Le même instant que `date_heure`, mais **converti en heure française**. C'est la référence à utiliser pour tout profil journalier. |
+| `heure_decimale` | heures | L'heure locale sous forme de nombre : 13,5 pour 13 h 30. Pratique pour tracer une courbe et regrouper par créneau. |
+| `annee`, `mois`, `jour_semaine` | entier | Découpage du calendrier, **en heure locale**. `jour_semaine` va de 0 (lundi) à 6 (dimanche). |
+| `saison` | catégorie ordonnée | `Hiver`, `Printemps`, `Été`, `Automne`, au sens **météorologique** : l'hiver couvre décembre, janvier et février, et ainsi de suite. |
+| `demande_nette` ⭐ | MW | Ce qu'il **reste à produire** une fois retirées les renouvelables non pilotables : `consommation − solaire − eolien`. C'est la variable centrale du projet : elle mesure le travail qui incombe au reste du système. Convention du secteur. |
+| `demande_nette_solaire` | MW | La même chose, mais en ne retirant **que le solaire** : `consommation − solaire`. Isole l'objet d'étude du projet. L'écart avec `demande_nette` mesure exactement l'apport de l'éolien. |
+| `tco_reconstruit` | booléen | Vaut `True` là où le taux de couverture a été **recalculé** par nos soins (années 2013 à 2019), et `False` là où il vient de RTE. Sert à ne jamais confondre une valeur publiée et une valeur reconstruite. |
+
+⚠️ `demande_nette` est **indéfinie** sur les 96 lignes où l'éolien manque. C'est
+volontaire : on préfère un trou visible à un zéro inventé. `demande_nette_solaire`
+n'a pas ce problème, le solaire étant renseigné partout.
+
 ## 🗑️ À ignorer
 
-| Variable | Description |
+| Variable | En clair |
 |---|---|
-| `column_30` | Colonne parasite, vide, à supprimer au chargement |
+| `column_30` | Colonne parasite, entièrement vide, sans aucun contenu. Supprimée au chargement. |
 
 ---
 
