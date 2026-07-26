@@ -67,6 +67,7 @@ Exemples : `tco_solaire`, `tch_solaire`, `tco_eolien`, `tch_eolien`, etc.
 
 ## ⚠️ Points de vigilance qualité (constats sur les données)
 
+- **Fuseau horaire, piège actif** : `date_heure` est en **UTC**, alors que `date` et `heure` sont en **heure locale**. Raisonner sur l'heure UTC fabrique une fausse déformation saisonnière : le pic solaire moyen y tombe à 11 h en juin contre 12 h en décembre, un décalage dû au seul changement d'heure (en heure locale il est à 13 h dans les deux cas). Utiliser `heure_decimale`, dérivée de `date_heure_locale` par `src/preparation.py`, pour tout profil journalier.
 - **Début de série vide** : les toutes premières lignes (jan. 2013) sont entièrement à `NaN`, il faut filtrer sur `consommation` renseignée.
 - **`eolien` en texte** : à convertir en numérique ; `'ND'` et `'-'` deviennent des valeurs manquantes.
 - **Batteries vides** : `stockage_batterie` / `destockage_batterie` inexploitables (voir ci-dessus).

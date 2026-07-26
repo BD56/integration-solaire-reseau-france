@@ -43,12 +43,23 @@ uv run python src/download.py
 integration-solaire-reseau-france/
 ├── data/                 # données téléchargées (non versionnées)
 ├── src/
-│   └── download.py       # récupération des données via l'API ODRE
-├── notebooks/            # analyses exploratoires (à venir)
+│   ├── download.py       # récupération des données via l'API ODRE
+│   └── preparation.py    # chargement et nettoyage (source unique)
+├── notebooks/
+│   ├── 01_exploration.py         # contrôle qualité des données
+│   └── 02_profils_saisonniers.py # sous-question 1 : profils par saison
+├── figures/              # figures produites par les scripts
+├── docs/
+│   ├── dictionnaire_donnees.md   # référence des variables
+│   └── journal-projet.md         # décisions et constats, ordre antéchronologique
+├── AGENTS.md             # document de référence pour les assistants
 ├── pyproject.toml        # dépendances (gérées par uv)
 ├── uv.lock               # versions verrouillées (reproductibilité)
 └── README.md
 ```
+
+Le nettoyage est défini **une seule fois**, dans `src/preparation.py`. Tout script
+d'analyse appelle `charger_donnees()` plutôt que de refaire ses propres corrections.
 
 ## 🎯 Problématique
 

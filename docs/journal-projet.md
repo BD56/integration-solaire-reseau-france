@@ -6,6 +6,64 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-26 : sous-question 1 traitée, profils saisonniers de demande nette
+
+Première sous-question descriptive traitée. Le dépôt passe de « aucun graphique produit » à trois figures et un module de préparation partagé.
+
+### 1. Décisions de cadrage actées
+
+- **Nettoyage centralisé.** Création de `src/preparation.py`, source unique du chargement et du nettoyage. `notebooks/01_exploration.py` est réécrit pour l'appeler et se limite désormais au contrôle qualité ; il ne redéfinit plus ses propres corrections. Tout script d'analyse doit passer par `charger_donnees()`.
+- **Pas d'agrégat national.** L'écart entre régions est l'objet d'intérêt, l'agrégat le dilue. Comparaison sur deux régions contrastées : **Nouvelle-Aquitaine** (couverture solaire moyenne 16,3 % sur 2024-2025) contre **Hauts-de-France** (1,8 %), dont les consommations moyennes sont proches (4 681 contre 5 305 MW), ce qui rend la comparaison honnête.
+- **Profils par saison, pas journée isolée.** La sous-question 1 porte sur la déformation saisonnière. Une journée réelle est conservée en complément illustratif.
+- **Moyenne, médiane et éventail de quantiles tracés ensemble.** Justification retenue : un réseau se dimensionne sur le jour le plus contraignant, pas sur le jour moyen. Les déciles d10 et d90 portent donc l'information utile ; l'écart moyenne contre médiane sert d'indicateur d'asymétrie (en mi-journée le solaire a un plafond de ciel clair et les nuages ne tirent que vers le bas).
+- **Années récentes uniquement** pour les profils (2023 à 2025, paramétrable). Agréger 2013 à 2026 mélangerait une époque quasi sans solaire et une époque très équipée, ce qui diluerait le creux recherché. L'évolution dans le temps relève de la sous-question 2.
+
+### 2. Constat nouveau : le fuseau horaire est un piège actif
+
+`date_heure` est en **UTC**, alors que les colonnes `date` et `heure` sont en **heure locale**. Raisonner sur l'heure UTC fabrique une fausse déformation saisonnière, exactement ce que la sous-question 1 cherche à mesurer :
+
+| Mois | Pic solaire moyen en UTC | Pic solaire moyen en heure locale |
+|---|---|---|
+| Juin | 11 h | 13 h |
+| Décembre | 12 h | 13 h |
+
+Le décalage d'une heure est un pur artefact du changement d'heure. `src/preparation.py` ajoute donc `date_heure_locale` (Europe/Paris) et `heure_decimale`, à utiliser pour tout profil journalier. À reporter dans le dictionnaire de données.
+
+### 3. Doublons : cause confirmée, `nature` mise hors de cause
+
+Les 336 lignes en doublon sur (région, horodatage) tombent toutes sur les **14 dates de passage à l'heure d'été** (dernier dimanche de mars, 2013 à 2026). La colonne `nature` n'y est pour rien : c'est un découpage temporel (définitives jusqu'à 2024, consolidées pour 2025 et 2026), sans recouvrement. Les deux modalités sont conservées, les filtrer supprimerait les deux années les plus riches en solaire.
+
+### 4. Résultats chiffrés (creux de mi-journée et remontée du soir, 2023 à 2025)
+
+Creux mesuré entre 10 h et 16 h, pic du soir entre 18 h et 21 h, en MW. « Jour le plus creusé » correspond au décile d10.
+
+| Région | Saison | Cas | Creux | Pic du soir | Remontée |
+|---|---|---|---|---|---|
+| Nouvelle-Aquitaine | Été | jour médian | 1 505 | 3 726 | 2 221 |
+| Nouvelle-Aquitaine | Été | jour le plus creusé | 563 | 3 147 | **2 584** |
+| Nouvelle-Aquitaine | Automne | jour le plus creusé | 602 | 3 379 | **2 778** |
+| Nouvelle-Aquitaine | Hiver | jour médian | 4 019 | 5 689 | 1 670 |
+| Hauts-de-France | Été | jour médian | 3 469 | 3 773 | 304 |
+| Hauts-de-France | Hiver | jour médian | 4 480 | 5 010 | 530 |
+
+### 5. Livrables
+
+- `src/preparation.py` : chargement, nettoyage, heure locale, saisons, demande nette.
+- `notebooks/01_exploration.py` : réécrit, contrôle qualité uniquement.
+- `notebooks/02_profils_saisonniers.py` : profils, figures et indicateurs chiffrés.
+- `figures/01_profils_saisonniers.png`, `02_saisons_superposees.png`, `03_journee_illustration.png`.
+
+Palette catégorielle validée par outil (séparation en vision normale 27,6 ; en vision déficiente 9,2) plutôt que choisie à l'œil.
+
+### 6. Points ouverts
+
+- Reporter au dictionnaire de données le constat sur le fuseau horaire (section 2).
+- Sous-question 2 (évolution pluriannuelle du creux) et sous-question 3 (équilibrage) restent à traiter.
+- Le code de faisabilité de l'entrée du 2026-07-25 n'est toujours pas porté dans le dépôt.
+- La piste prévision reste en attente, tributaire d'une source météo exogène.
+
+---
+
 ## 2026-07-25 : étude de faisabilité d'un volet prévision
 
 Entrée rédigée depuis une conversation généraliste (hors session projet). Contexte, constats et décisions à reprendre ici.
