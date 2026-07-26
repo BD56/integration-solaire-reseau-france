@@ -43,7 +43,7 @@ Poids : 96 lignes sur 2,8 millions, soit **0,0034 %**. À documenter, pas à cor
 | `hydraulique` | 8 | 0,00 % | −6 | −1 |
 | `bioenergies` | 0 | 0 % | | jamais négative |
 
-**Ce ne sont pas des erreurs** : ce sont les installations qui consomment au lieu de produire (auxiliaires d'une centrale à l'arrêt, onduleurs des panneaux la nuit). Deux indices le confirment :
+**Ce ne sont pas des erreurs** : ce sont les installations qui consomment au lieu de produire (auxiliaires d'une centrale à l'arrêt, onduleurs des panneaux la nuit). Deux indices le confirment, **sur le moment où elles surviennent** :
 
 - le solaire n'est **jamais** négatif entre 10 h et 14 h. Répartition horaire locale : 16 812 lignes entre 0 h et 6 h, 5 254 entre 6 h et 10 h, **0** entre 10 h et 14 h, 123 entre 14 h et 18 h, 11 240 entre 18 h et 24 h ;
 - la médiane du nucléaire négatif, −87 MW, correspond à l'ordre de grandeur des auxiliaires d'un réacteur à l'arrêt.
@@ -56,7 +56,35 @@ Les amplitudes sont faibles face aux niveaux habituels : −144 MW contre 6 075 
 
 **Conséquence pour la sous-question 2** : elle compare 2013 à 2026, donc de part et d'autre de cette rupture. Une évolution observée sur toute la période peut refléter un changement comptable plutôt qu'un phénomène réel. À traiter explicitement, par exemple en vérifiant que les conclusions tiennent sur la seule période 2020-2026.
 
-Deux concentrations notées au passage, non expliquées : le solaire négatif est à 99,8 % en Nouvelle-Aquitaine, et le thermique négatif se concentre en Île-de-France et en Occitanie. **Point ouvert**, sans doute lié au parc de ces régions.
+#### Correction : le solaire négatif est une pratique de déclaration, pas un phénomène régional
+
+La concentration régionale a été creusée après coup, et **elle nuance la lecture ci-dessus**. Le phénomène est physiquement réel partout, mais il n'est **déclaré** que par certaines régions et à certaines époques.
+
+Solaire négatif avant 2020, par région :
+
+| Région | Lignes < 0 | % de ses lignes | Solaire moyen |
+|---|---|---|---|
+| Nouvelle-Aquitaine | 33 379 | **27,2 %** | 243 MW |
+| Provence-Alpes-Côte d'Azur | 32 | 0,03 % | 154 MW |
+| Grand Est | 9 | 0,01 % | 70 MW |
+| Occitanie | **9** | 0,01 % | **206 MW** |
+| Les huit autres | 0 | 0 % | |
+
+L'Occitanie a un parc **comparable** à la Nouvelle-Aquitaine et 3 700 fois moins de valeurs négatives. Ce n'est donc pas une question de taille de parc : les panneaux d'Occitanie consomment aussi la nuit, mais leur production n'est jamais reportée en négatif. Chronologie en Nouvelle-Aquitaine : rien en 2014, 2 433 lignes en 2015, environ 8 400 par an de 2016 à 2018, 5 719 en 2019, puis zéro à partir de 2020.
+
+**Formulation correcte** : phénomène physique réel, mais **enregistré de façon incohérente selon les régions et les époques**. Ma première rédaction, qui le présentait comme purement physique, était juste sur le moment (jamais à midi) et fausse sur la répartition.
+
+**Conséquences** : ne jamais comparer les régions sur cette base, et se méfier de la série solaire de la Nouvelle-Aquitaine avant 2020 pour la sous-question 2. Les profils saisonniers actuels ne sont pas touchés, ils portent sur 2023-2025.
+
+Le **thermique** négatif suit une logique différente, mieux expliquée par la taille du parc :
+
+| Région | Lignes < 0 | Thermique moyen |
+|---|---|---|
+| Île-de-France | 39 518 | 272 MW |
+| Occitanie | 31 455 | **32 MW** |
+| Pays de la Loire | 7 336 | **532 MW** |
+
+L'Occitanie, avec un parc minuscule, passe souvent au négatif parce que ses auxiliaires dominent. Les Pays de la Loire, avec le plus gros parc, sont rarement négatifs parce que leurs centrales tournent.
 
 ### 2. Panorama de l'éolien par région (production moyenne, MW)
 

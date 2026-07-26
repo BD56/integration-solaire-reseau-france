@@ -114,7 +114,9 @@ n'a pas ce problème, le solaire étant renseigné partout.
   - ⚠️ **Ne pas remplacer par zéro.** Le Centre-Val de Loire produisait 550 MW juste avant le trou et 620 MW juste après : le parc tournait à plein régime. Un zéro fabriquerait un effondrement de production de 24 heures suivi d'un retour instantané. La valeur manquante est le traitement correct, et c'est ce que fait `src/preparation.py`.
   - Conséquence : ce sont exactement les 96 lignes où `demande_nette` reste indéfinie.
 - **Batteries vides** : `stockage_batterie` / `destockage_batterie` inexploitables (voir ci-dessus).
-- **Valeurs négatives de production** : elles ne sont **pas des erreurs**, ce sont les installations qui **consomment** au lieu de produire (auxiliaires d'une centrale à l'arrêt, onduleurs des panneaux la nuit). Ne pas les ramener à zéro : elles ont un sens physique, et pour la demande nette un solaire négatif l'augmente légèrement, ce qui est correct.
+- **Valeurs négatives de production** : elles ne sont **pas des erreurs**, ce sont les installations qui **consomment** au lieu de produire (auxiliaires d'une centrale à l'arrêt, onduleurs des panneaux la nuit). Ne pas les ramener à zéro : pour la demande nette, un solaire négatif l'augmente légèrement, ce qui est correct.
+
+  ⚠️ **Mais le phénomène est enregistré de façon incohérente.** Il est physiquement réel partout, il n'est déclaré que par certaines régions et à certaines époques. Ne jamais comparer les régions sur cette base (détail plus bas).
 
   | Filière | Lignes < 0 | % | Minimum | Médiane des négatifs |
   |---|---|---|---|---|
@@ -125,7 +127,13 @@ n'a pas ce problème, le solaire étant renseigné partout.
   | `hydraulique` | 8 | 0,00 % | −6 | −1 |
   | `bioenergies` | 0 | 0 % | | jamais négative |
 
-  Deux indices confirment la lecture physique : le solaire n'est **jamais** négatif entre 10 h et 14 h (84 % des cas surviennent la nuit), et la médiane du nucléaire négatif, −87 MW, correspond à l'ordre de grandeur des auxiliaires d'un réacteur à l'arrêt. Les amplitudes restent faibles face aux niveaux habituels (−144 MW contre 6 075 MW de production moyenne pour le nucléaire).
+  Deux indices confirment la lecture physique sur le **moment** où elles surviennent : le solaire n'est **jamais** négatif entre 10 h et 14 h (84 % des cas surviennent la nuit), et la médiane du nucléaire négatif, −87 MW, correspond à l'ordre de grandeur des auxiliaires d'un réacteur à l'arrêt. Les amplitudes restent faibles face aux niveaux habituels (−144 MW contre 6 075 MW de production moyenne pour le nucléaire).
+
+- ⚠️ **Le solaire négatif est une pratique de déclaration, pas une différence régionale réelle.** Avant 2020, il est concentré à **99,8 % en Nouvelle-Aquitaine** (33 379 lignes, soit 27,2 % de ses relevés). L'Occitanie, dont le parc solaire est comparable (206 MW de production moyenne contre 243), n'en compte que **9**, un rapport de 1 à 3 700. Les huit autres régions n'en ont aucune. Les panneaux d'Occitanie consomment pourtant la nuit eux aussi : la Nouvelle-Aquitaine est simplement la seule à l'avoir reporté, entre 2015 et 2019.
+
+  Conséquences : **ne pas comparer les régions** sur cette base, et se méfier de la série solaire de la Nouvelle-Aquitaine avant 2020 pour toute analyse pluriannuelle.
+
+  Le **thermique** négatif suit une logique différente, mieux expliquée par la taille du parc : l'Occitanie, avec un parc minuscule (32 MW de moyenne), passe souvent au négatif parce que ses auxiliaires dominent, alors que les Pays de la Loire, avec le plus gros parc (532 MW), sont rarement négatifs parce que leurs centrales tournent.
 
 - ⚠️ **Rupture de méthode en 2020, à retenir pour toute analyse pluriannuelle.** **Aucune** valeur négative n'apparaît après 2019, toutes filières confondues. C'est la même année où RTE commence à publier les `tco_` et `tch_`. Tout indique un changement de convention côté RTE, qui aurait cessé de reporter la consommation propre des installations. Conséquence : une évolution observée entre 2013 et 2026 peut refléter ce changement comptable plutôt qu'un phénomène réel. À prendre en compte pour la sous-question 2.
 - **`tco_`/`tch_` peuvent dépasser 100 %** : normal pour le TCO (à un instant, une région peu consommatrice et bien ensoleillée peut produire plus que sa consommation locale, surplus exporté) ; pour le TCH, lié à la référence de capacité installée.
