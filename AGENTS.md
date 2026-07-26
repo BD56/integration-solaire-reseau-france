@@ -44,13 +44,33 @@ Pièges vérifiés sur les données, à traiter systématiquement :
 
 | Point | Constat | Traitement |
 |---|---|---|
-| `eolien` | typée texte, contient les marqueurs `ND` et `-` | convertir en numérique (`errors="coerce"`) |
+**Tout le chargement et le nettoyage sont centralisés dans `src/preparation.py`.** Ne pas les réécrire dans un script d'analyse : appeler `charger_donnees()`. Le détail des 32 colonnes est dans le [dictionnaire](docs/dictionnaire_donnees.md), qui fait foi.
+
+| Point | Constat | Traitement |
+|---|---|---|
+| `eolien` | typée texte. `ND` (12 lignes) = ligne entièrement vide ; `-` (96 lignes) = **deux pannes de mesure d'une journée** en 2013 | convertir en numérique (`errors="coerce"`). **Ne jamais remplacer par zéro** : le parc tournait à 550 MW juste avant le trou |
 | `column_30` | colonne parasite, entièrement vide | supprimer |
-| `stockage_batterie`, `destockage_batterie` | **toujours à zéro**, inexploitables | ne pas construire d'analyse dessus |
-| `nucleaire` | vide pour les régions sans centrale (environ 75 % de remplissage) | absence de valeur ≠ zéro |
-| `pompage` | non nul dans environ 28 % des cas seulement | idem |
-| horodatages | environ 56 doublons par région, tous à 01:00 UTC le dernier dimanche de mars (changement d'heure) | `drop_duplicates(subset="date_heure", keep="first")` |
-| `nature` | deux modalités : `Données définitives` (2 524 608 lignes) et `Données consolidées` (279 360) | en tenir compte si l'homogénéité importe |
+| `stockage_batterie`, `destockage_batterie` | **toujours à zéro**, inexploitables | ne pas construire d'analyse dessus. Le seul stockage observable est `pompage` |
+| horodatages | passage à l'heure d'été : les créneaux locaux 02:00 et 02:30 n'existent pas mais sont publiés, et retombent sur le même instant UTC que 03:00 et 03:30 | supprimer les deux étiquettes fictives, pas déduper au hasard. Le jour doit compter **46** créneaux |
+| horodatages | passage à l'heure d'hiver : une heure réelle **manque** (saut de 1 h 30 en UTC, une fois par an et par région) | la série UTC **n'est pas une grille régulière**. Bloquant pour tout modèle de série temporelle |
+| fuseau | `date_heure` est en **UTC**, `date` et `heure` sont en **heure locale** | raisonner en UTC fabrique une fausse déformation saisonnière. Utiliser `heure_decimale` |
+| valeurs négatives | production négative = l'installation consomme (auxiliaires, onduleurs la nuit). Physiquement réel, mais **déclaré de façon incohérente** : le solaire négatif est à 99,8 % en Nouvelle-Aquitaine, 2015-2019 | ne pas corriger, mais **ne jamais comparer les régions** sur cette base |
+| `nature` | `Données définitives` jusqu'à 2024, `Données consolidées` pour 2025-2026 (révisables) | découpage temporel, pas un doublon. Conserver les deux |
+
+### Ruptures temporelles, à connaître avant toute analyse pluriannuelle
+
+| Année | Rupture | Portée |
+|---|---|---|
+| **2021** | `nucleaire`, `pompage`, `eolien_terrestre` et les batteries passent de « case vide » à « **zéro** » | ⚠️ **Le piège principal.** La moyenne du nucléaire sur les 12 régions chute de **37,1 %** en 2021, alors qu'elle **augmente de 7,9 %** sur les 7 régions qui ont réellement une centrale. La chute est un pur artefact de calcul |
+| **2020** | fin des valeurs négatives, apparition des `tco_` et `tch_` | changement de convention RTE. Frontière pour toute série solaire longue |
+| 2015 | apparition du solaire négatif en Nouvelle-Aquitaine, du `pompage` en Hauts-de-France | artefacts de déclaration |
+| 2022 | crise du parc nucléaire | **réelle** (−22,7 %, confirmé par les deux modes de calcul) |
+| mars à juin 2020 | confinement | réel, passager, touche la consommation |
+| 2016 | réforme des régions | **aucune trace** : 12 régions sur toute la période, historique reconstruit par RTE |
+
+➡️ **Règle qui en découle : ne jamais moyenner sur les 12 régions sans vérifier le taux de remplissage** de la variable sur la période considérée. Restreindre aux régions réellement concernées.
+
+Le recensement complet et son classement par importance sont dans le [journal](docs/journal-projet.md), entrée du 2026-07-26 (suite 3).
 
 ## 6. Principe méthodologique : pas de raisonnement en autarcie régionale
 
