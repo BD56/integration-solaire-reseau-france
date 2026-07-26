@@ -100,9 +100,17 @@ Deux enseignements conservés pour le jour où il sera écrit :
 
 ---
 
-## 2026-07-26 : sous-question 1 traitée, profils saisonniers de demande nette
+## 2026-07-26 : premiers profils saisonniers de demande nette (sous-question 1 NON close)
 
-Première sous-question descriptive traitée. Le dépôt passe de « aucun graphique produit » à trois figures et un module de préparation partagé.
+> ⚠️ **Correction apportée le jour même.** Cette entrée était initialement intitulée
+> « sous-question 1 traitée ». C'était faux, et le titre a été rectifié. Ce qui est
+> produit ici ne clôt pas la sous-question 1 : les profils ne portent que sur **2 régions
+> sur 12** et sur **2023-2025**, n'utilisent qu'une des deux définitions de la demande
+> nette (`demande_nette_solaire` n'existait pas encore), et ont été calculés **avant** la
+> correction du nettoyage des changements d'heure. Ils n'ont pas non plus été validés par
+> Bryan. Voir l'entrée suivante, section 6.
+
+Premiers résultats descriptifs. Le dépôt passe de « aucun graphique produit » à trois figures et un module de préparation partagé.
 
 ### 1. Décisions de cadrage actées
 
