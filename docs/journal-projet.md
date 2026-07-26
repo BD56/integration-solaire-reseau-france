@@ -6,6 +6,83 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-26 (suite 3) : recensement des ruptures temporelles
+
+Détection systématique menée **avant** toute recherche de cause, pour ne pas ne trouver que ce qu'on cherchait. Referme la phase exploratoire.
+
+### 1. Méthode
+
+Quatre balayages sur 2013-2025 (2026 écarté, incomplet) :
+
+- **structure** : taux de remplissage de chaque colonne par année, pour repérer ce qui apparaît ou disparaît ;
+- **niveau** : moyenne annuelle par filière, en signalant les variations dépassant trois fois la variation habituelle de la variable, afin de ne pas confondre une croissance régulière avec un saut ;
+- **comportement** : part de valeurs négatives par année ;
+- **transitoire** : écart de chaque mois au même mois des autres années, en écarts-types.
+
+### 2. Le résultat le plus important : une des deux chutes du nucléaire n'existe pas
+
+| Année | Moyenne sur les 12 régions | Moyenne sur les 7 régions nucléaires |
+|---|---|---|
+| 2020 | −11,8 % | −11,8 % |
+| **2021** | **−37,1 %** | **+7,9 %** |
+| **2022** | **−22,7 %** | **−22,7 %** |
+
+En 2021, les 5 régions sans centrale passent de « case vide » à « zéro ». Elles entrent donc dans la moyenne et la tirent mécaniquement vers le bas. Restreinte aux régions qui ont réellement du nucléaire, 2021 est **en hausse de 7,9 %**. En 2022 les deux mesures coïncident : la chute est **réelle**.
+
+Une même détection, deux natures opposées. Sans ce contrôle, on aurait décrit une crise du nucléaire débutant en 2021.
+
+### 3. Trois seuils structurels, pas un seul
+
+Taux de remplissage par année (%) :
+
+| Année | `pompage` | `nucleaire` | `tch_solaire` | `eolien_terrestre` | `stockage_batterie` |
+|---|---|---|---|---|---|
+| 2013-2014 | 50 | 58 | 0 | 0 | 0 |
+| 2015-2019 | **58** | 58 | 0 | 0 | 0 |
+| 2020 | 58 | 58 | **100** | 0 | 0 |
+| 2021-2025 | **100** | **100** | 100 | **100** | **100** |
+
+Les seuils sont **2015**, **2020** et **2021**. L'entrée précédente ne parlait que de 2020, c'était incomplet. Les passages à 100 % de 2021 ne sont pas de nouvelles données mais un changement de convention : le vide devient zéro.
+
+### 4. Recensement complet et classement
+
+Deux critères : un **artefact** (la donnée décrit un changement qui n'a pas eu lieu) est plus dangereux qu'un **événement réel** ; un effet **permanent** est plus dangereux qu'un effet **passager**.
+
+| Rupture | Année | Nature | Niveau | Touche le sujet ? |
+|---|---|---|---|---|
+| Fin des valeurs négatives, apparition des `tco_`/`tch_` | 2020 | artefact permanent | **1** | **Oui**, le solaire |
+| Vide devenu zéro (`nucleaire`, `pompage`, `eolien_terrestre`, batteries) | 2021 | artefact permanent | **1** | Indirectement : fausse toute moyenne « toutes régions » |
+| Solaire négatif en Nouvelle-Aquitaine | 2015-2019 | artefact | 2 | **Oui**, le solaire |
+| Pompage renseigné en Hauts-de-France | 2015 | artefact | 2 | Oui, pour l'équilibrage |
+| Crise du parc nucléaire | 2022 | réel durable | 2 | Non directement |
+| Confinement | mars à juin 2020 | réel passager | 3 | **Oui**, la consommation |
+| Croissance des bioénergies | 2014 | réel | 3 | Non |
+| Vague de froid | janvier 2017 | réel passager | 3 | Oui, la consommation |
+| Réforme des régions | 2016 | **inexistante** | | Non |
+
+Précisions sur trois lignes :
+
+- **Bioénergies 2014** (+22,8 %) : la hausse touche **les 12 régions sans exception**, ce qui plaide pour une croissance réelle du parc plutôt qu'un changement de périmètre local.
+- **Confinement** : l'anomalie dure environ trois mois puis s'efface. Écarts-types de la consommation en 2020 : mars −0,77, **avril −2,34**, mai −1,65, juin −1,53, juillet −0,79, août −0,23. Profil cohérent avec la période du 17 mars au 11 mai 2020.
+- **Janvier 2017** (+2,1 écarts-types) : cause **non vérifiée**. Une vague de froid est l'explication attendue, elle n'a pas été établie sur les données.
+
+### 5. Un résultat négatif utile
+
+**Aucune rupture en 2016**, et le jeu compte **12 régions sur toute la période**. La réforme des régions ne laisse aucune trace : RTE a reconstruit l'historique sur le découpage actuel. Le soupçon exprimé dans l'entrée précédente était infondé.
+
+### 6. Trois règles qui en découlent pour la suite
+
+1. **Ne jamais moyenner sur les 12 régions sans vérifier le taux de remplissage** de la variable sur la période considérée. C'est exactement le piège de 2021.
+2. **Traiter 2020 comme une frontière** pour toute série solaire longue, à cause du changement de convention.
+3. **Nommer explicitement le confinement** plutôt que de le laisser peser sur une tendance de consommation.
+
+### 7. Points ouverts
+
+- Le pompage des Hauts-de-France à partir de 2015 : vraies valeurs ou zéros déclarés ? Non vérifié.
+- La cause de janvier 2017 : non établie.
+
+---
+
 ## 2026-07-26 (suite 2) : lignes `-` de l'éolien tranchées, valeurs négatives expliquées
 
 Referme deux points de la phase exploratoire, et en ouvre un nouveau : une rupture de méthode en 2020.

@@ -36,7 +36,7 @@ le débit électrique à cet instant.
 | `eolien` | MW | L'électricité produite par les **éoliennes**, terrestres et en mer confondues. Géographie inverse de celle du solaire : les régions du Nord dominent. | ⚠️ **stockée en texte** ; `'ND'` et `'-'` valent manquant, voir les points de vigilance |
 | `eolien_terrestre` | MW | La part produite par les éoliennes **à terre**. | |
 | `eolien_offshore` | MW | La part produite par les éoliennes **en mer**. | Faible, déploiement récent |
-| `nucleaire` | MW | L'électricité produite par les **centrales nucléaires** situées dans la région. | ~75 % renseigné : 5 régions n'ont aucune centrale, ce n'est pas une donnée manquante |
+| `nucleaire` | MW | L'électricité produite par les **centrales nucléaires** situées dans la région. **7 régions sur 12** en ont une. | Vide pour les 5 autres jusqu'en 2020, puis **zéro** à partir de 2021 : voir l'avertissement sur les moyennes |
 | `hydraulique` | MW | L'électricité produite par l'**eau** : barrages, centrales au fil de l'eau, et **turbinage des STEP** (voir `pompage`). | |
 | `thermique` | MW | L'électricité produite en **brûlant** du gaz, du charbon ou du fioul. Pilotable, sert d'ajustement. | |
 | `bioenergies` | MW | L'électricité produite à partir de **biomasse, biogaz et déchets**. | Faible et très stable |
@@ -134,6 +134,12 @@ n'a pas ce problème, le solaire étant renseigné partout.
   Conséquences : **ne pas comparer les régions** sur cette base, et se méfier de la série solaire de la Nouvelle-Aquitaine avant 2020 pour toute analyse pluriannuelle.
 
   Le **thermique** négatif suit une logique différente, mieux expliquée par la taille du parc : l'Occitanie, avec un parc minuscule (32 MW de moyenne), passe souvent au négatif parce que ses auxiliaires dominent, alors que les Pays de la Loire, avec le plus gros parc (532 MW), sont rarement négatifs parce que leurs centrales tournent.
+
+- ⚠️ **Le vide devient zéro en 2021, et ça fausse les moyennes.** Les colonnes `nucleaire`, `pompage`, `eolien_terrestre` et les batteries passent d'un remplissage partiel à **100 %** en 2021. Ce ne sont pas de nouvelles données : les régions concernées passent de « case vide » à « zéro ». Conséquence mesurée : la moyenne du nucléaire sur les 12 régions chute de **37,1 %** en 2021, alors que la moyenne sur les **7 régions qui ont réellement une centrale augmente de 7,9 %**. La chute est un pur artefact de calcul.
+
+  ➡️ **Règle** : ne jamais moyenner sur les 12 régions sans vérifier le taux de remplissage de la variable sur la période. Restreindre aux régions réellement concernées, ou traiter les vides et les zéros de la même façon.
+
+  (À titre de comparaison, la baisse de **22,7 %** du nucléaire en **2022** est **réelle** : les deux modes de calcul donnent le même résultat. Il s'agit de la crise du parc.)
 
 - ⚠️ **Rupture de méthode en 2020, à retenir pour toute analyse pluriannuelle.** **Aucune** valeur négative n'apparaît après 2019, toutes filières confondues. C'est la même année où RTE commence à publier les `tco_` et `tch_`. Tout indique un changement de convention côté RTE, qui aurait cessé de reporter la consommation propre des installations. Conséquence : une évolution observée entre 2013 et 2026 peut refléter ce changement comptable plutôt qu'un phénomène réel. À prendre en compte pour la sous-question 2.
 - **`tco_`/`tch_` peuvent dépasser 100 %** : normal pour le TCO (à un instant, une région peu consommatrice et bien ensoleillée peut produire plus que sa consommation locale, surplus exporté) ; pour le TCH, lié à la référence de capacité installée.
