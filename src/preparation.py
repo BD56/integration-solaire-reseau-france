@@ -11,9 +11,8 @@ Nettoyages appliqués (chacun justifié par une vérification sur les données) 
    `'ND'` et `'-'` deviennent des valeurs manquantes.
 3. Suppression des lignes sans `consommation` (début de série de janvier 2013,
    entièrement vides, sans information exploitable).
-4. Déduplication sur (région, horodatage). Les 672 lignes concernées tombent
-   toutes sur les 14 dates de passage à l'heure d'été (dernier dimanche de
-   mars, de 2013 à 2026), où l'heure locale est ambiguë.
+4. Suppression des créneaux locaux 02:00 et 02:30 du dimanche de passage à
+   l'heure d'été. Voir la section sur les changements d'heure ci-dessous.
 5. Ajout d'un horodatage en **heure locale** (Europe/Paris).
 
 Point de vigilance sur le fuseau horaire
@@ -24,6 +23,35 @@ saisonnière : le pic solaire moyen y tombe à 11 h en juin contre 12 h en
 décembre, un décalage dû au seul changement d'heure. En heure locale il tombe
 à 13 h dans les deux cas. Les profils journaliers doivent donc utiliser
 `heure_decimale`, dérivée de l'heure locale.
+
+Changements d'heure : un doublon en mars, un trou en octobre
+------------------------------------------------------------
+La source publie **toujours 48 créneaux de 30 minutes par jour**, y compris les
+jours de bascule, ce qui produit deux anomalies de nature opposée.
+
+**Mars** (l'horloge saute de 02:00 à 03:00, le jour dure 23 heures). Les
+créneaux locaux 02:00 et 02:30 n'existent pas, mais sont publiés quand même et
+retombent sur les mêmes instants UTC que 03:00 et 03:30. Aucune donnée ne
+manque : le jour compte bien 46 horodatages UTC distincts, soit sa durée réelle.
+On retire donc les deux étiquettes fictives. Combler quoi que ce soit ici
+reviendrait à inventer des observations pour un moment qui n'a pas existé.
+
+**Octobre** (l'horloge recule de 03:00 à 02:00, le jour dure 25 heures).
+L'heure locale 02:00 à 02:59 a lieu deux fois, mais n'est publiée qu'une seule
+fois, pour la seconde occurrence. La première n'est enregistrée nulle part :
+il manque une heure réelle (créneaux 00:00 et 00:30 UTC), soit 336 créneaux sur
+l'ensemble du jeu (0,012 %).
+
+⚠️ **À retenir pour un futur volet de modélisation ou de prévision.** À cause du
+trou d'octobre, la série UTC n'est **pas une grille régulière** : on y observe un
+saut de 1 h 30 une fois par an et par région. Tout traitement qui suppose un pas
+constant (décalages temporels, autocorrélation, modèle de série temporelle)
+butera dessus. C'est sans effet sur les analyses descriptives par profil, et sans
+effet sur le solaire (la production y vaut 0,07 MW en moyenne, il fait nuit).
+Si une grille régulière devient nécessaire, interpoler ces créneaux est
+acceptable (erreur médiane mesurée à 65 MW, soit 3,2 % du niveau nocturne)
+**à condition de marquer les lignes imputées par une colonne dédiée**, pour
+qu'aucune analyse ne confonde une valeur observée et une valeur reconstruite.
 
 Note sur la colonne `nature`
 ----------------------------
@@ -44,6 +72,9 @@ RACINE_PROJET = Path(__file__).resolve().parent.parent
 CHEMIN_DEFAUT = RACINE_PROJET / "data" / "eco2mix_regional.parquet"
 
 FUSEAU_LOCAL = "Europe/Paris"
+
+# Filières pour lesquelles RTE publie un taux de couverture (TCO).
+FILIERES_TCO = ["solaire", "eolien", "hydraulique", "thermique", "bioenergies", "nucleaire"]
 
 # Saisons météorologiques : mois -> libellé.
 _SAISON_PAR_MOIS = {
@@ -89,8 +120,12 @@ def charger_donnees(chemin: Path | str | None = None, verbeux: bool = True) -> p
     df = df.dropna(subset=["consommation"])
     apres_vides = len(df)
 
-    # 4. Doublons d'horodatage (changements d'heure de mars).
-    df = df.drop_duplicates(subset=["libelle_region", "date_heure"], keep="first")
+    # 4. Créneaux locaux fictifs du passage à l'heure d'été (02:00 et 02:30 de mars).
+    # Parmi deux lignes partageant le même instant UTC, l'étiquette locale la plus
+    # petite est celle de l'heure supprimée par la bascule : c'est celle qu'on retire.
+    doublons = df.duplicated(subset=["libelle_region", "date_heure"], keep=False)
+    etiquette_minimale = df.groupby(["libelle_region", "date_heure"])["heure"].transform("min")
+    df = df[~(doublons & (df["heure"] == etiquette_minimale))]
     apres_doublons = len(df)
 
     # 5. Heure locale : indispensable pour comparer les saisons sans biais de fuseau.
@@ -104,23 +139,117 @@ def charger_donnees(chemin: Path | str | None = None, verbeux: bool = True) -> p
         df["mois"].map(_SAISON_PAR_MOIS), categories=SAISONS, ordered=True
     )
 
-    # Variable centrale du projet. Reste indéfinie là où l'éolien manque :
-    # on ne comble pas artificiellement, le trou doit rester visible.
+    # Deux définitions, calculées côte à côte plutôt que d'en imposer une.
+    # `demande_nette` suit la convention du secteur : on soustrait toute la
+    # production renouvelable non pilotable, solaire et éolien confondus.
+    # `demande_nette_solaire` isole l'objet d'étude du projet. L'écart entre les
+    # deux mesure précisément ce qu'apporte l'éolien, au lieu de le mélanger.
+    # `demande_nette` reste indéfinie là où l'éolien manque (96 lignes) : on ne
+    # comble pas artificiellement, le trou doit rester visible.
     df["demande_nette"] = df["consommation"] - df["solaire"] - df["eolien"]
+    df["demande_nette_solaire"] = df["consommation"] - df["solaire"]
+
+    # Reconstruction des taux de couverture absents avant 2020 (voir completer_tco).
+    df = completer_tco(df)
 
     df = df.sort_values(["libelle_region", "date_heure"]).reset_index(drop=True)
 
     if verbeux:
         print(f"Lignes chargées          : {lignes_initiales:>10,}")
         print(f"  sans consommation      : {lignes_initiales - apres_vides:>10,} retirées")
-        print(f"  doublons d'horodatage  : {apres_vides - apres_doublons:>10,} retirées")
+        print(f"  créneaux fictifs mars  : {apres_vides - apres_doublons:>10,} retirés")
         print(f"Lignes retenues          : {len(df):>10,}")
         print(f"Période (heure locale)   : {df['date_heure_locale'].min()} "
               f"-> {df['date_heure_locale'].max()}")
         indefinies = int(df["demande_nette"].isna().sum())
         print(f"Demande nette indéfinie  : {indefinies:>10,} (éolien manquant)")
+        reconstruites = int(df["tco_reconstruit"].sum())
+        print(f"Taux de couverture       : {reconstruites:>10,} lignes reconstruites "
+              f"(marquées par 'tco_reconstruit')")
 
     return df
+
+
+def completer_tco(df: pd.DataFrame) -> pd.DataFrame:
+    """Reconstruit les taux de couverture absents de 2013 à 2019.
+
+    RTE ne publie les colonnes `tco_` qu'à partir de 2020 (0 % renseigné avant,
+    100 % ensuite). Or le taux de couverture est une fonction déterministe de
+    colonnes disponibles sur toute la période :
+
+        tco_filiere = 100 x filiere / consommation
+
+    La formule a été vérifiée sur les valeurs publiées : l'écart absolu médian
+    est de 0,003 point et le maximum de 0,01, soit de l'arrondi. La
+    reconstruction n'est donc pas une approximation.
+
+    Deux garde-fous :
+
+    - on ne remplit que les valeurs manquantes, jamais par-dessus une valeur
+      publiée par RTE ;
+    - les lignes complétées sont marquées par la colonne booléenne
+      `tco_reconstruit`, pour qu'aucune analyse ne confonde une valeur publiée
+      et une valeur recalculée.
+
+    Attention : cela n'apporte aucune information nouvelle, seulement une
+    colonne utilisable sur toute la période. `tco_nucleaire` reste limité par
+    la disponibilité de `nucleaire` (environ 75 %).
+    """
+    resultat = df.copy()
+    # Une consommation nulle rendrait le taux infini : on ne remplit pas ces lignes.
+    consommation = resultat["consommation"].where(resultat["consommation"] > 0)
+
+    a_reconstruire = pd.Series(False, index=resultat.index)
+    for filiere in FILIERES_TCO:
+        colonne = f"tco_{filiere}"
+        if colonne not in resultat.columns:
+            continue
+        manquant = resultat[colonne].isna() & resultat[filiere].notna() & consommation.notna()
+        resultat.loc[manquant, colonne] = (
+            100 * resultat.loc[manquant, filiere] / consommation[manquant]
+        )
+        a_reconstruire |= manquant
+
+    resultat["tco_reconstruit"] = a_reconstruire
+    return resultat
+
+
+def capacite_installee(
+    df: pd.DataFrame, filiere: str = "solaire", seuil_tch: float = 5.0
+) -> pd.DataFrame:
+    """Déduit la puissance installée par région et par mois, en inversant le TCH.
+
+    Le taux de charge vaut `100 x production / puissance installée`, donc :
+
+        puissance installée = 100 x production / tch
+
+    La puissance installée n'est pas fournie par le jeu de données : c'est donc
+    une information réellement nouvelle, contrairement à la reconstruction du
+    TCO. Elle sert notamment à mesurer la croissance du parc (sous-question 2).
+
+    Deux limites à garder en tête :
+
+    - le TCH n'existe qu'à partir de **2020**, donc la puissance installée
+      n'est déductible que sur 2020-2026. L'extrapoler à rebours sur les sept
+      années précédentes serait hasardeux ; une source externe (registre des
+      installations d'ODRE) serait plus honnête ;
+    - le rapport explose quand le taux de charge est proche de zéro (la nuit).
+      On ne retient donc que les pas de temps où il dépasse `seuil_tch`, et on
+      résume par la médiane mensuelle, la puissance installée évoluant lentement.
+    """
+    colonne_tch = f"tch_{filiere}"
+    retenu = df[df[colonne_tch] > seuil_tch].copy()
+    retenu["capacite"] = 100 * retenu[filiere] / retenu[colonne_tch]
+    # On retire le fuseau avant de regrouper par mois : seul le calendrier importe ici.
+    sans_fuseau = retenu["date_heure_locale"].dt.tz_localize(None)
+    retenu["mois_date"] = sans_fuseau.dt.to_period("M").dt.to_timestamp()
+
+    resume = (
+        retenu.groupby(["libelle_region", "mois_date"])["capacite"]
+        .agg(capacite_mw="median", pas_de_temps="size")
+        .reset_index()
+    )
+    return resume
 
 
 def resume_nature(df: pd.DataFrame) -> pd.DataFrame:
