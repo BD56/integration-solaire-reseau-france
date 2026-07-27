@@ -6,6 +6,77 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-27 : tableau de bord Streamlit, et bascule vers la visualisation
+
+Changement de méthode acté, puis construction d'un tableau de bord interactif.
+
+### 1. Pourquoi passer à la visualisation
+
+Bryan a contesté, à juste titre, la proposition de clore les sous-questions par des figures statiques. Argument retenu : **l'exploration menée jusqu'ici était presque entièrement numérique** (comptages, médianes, tableaux) pour trois figures seulement. Or des statistiques résumées cachent ce qu'un graphique montre immédiatement. « Se perdre » dans la visualisation est une méthode d'exploration légitime, pas une perte de temps.
+
+Distinction conservée : le **brouillon** (`notebooks/03_brouillon_visuel.py`, figures rapides et peu commentées, jetables) et la **figure finale** (soignée, autoportante). Le premier alimente la seconde.
+
+### 2. Décisions d'architecture
+
+| Décision | Motif |
+|---|---|
+| **Streamlit** plutôt que Dash ou un rapport statique | Le moins de code pour un résultat propre, et les menus sont l'intérêt principal |
+| **Plotly** dès le départ | Le survol des cases apporte réellement quelque chose sur une carte de chaleur |
+| **Outil de travail ET pièce de portfolio** | Choix de Bryan, qui veut des outils complets et agréables |
+| **Local pour l'instant**, version en ligne plus tard | Une version déployée exigerait un extrait allégé versionné, les données pesant 86 Mo |
+| Calculs dans `src/`, affichage dans `app/` | Évite que les scripts et le tableau de bord divergent |
+
+Découpage : `src/analyses.py` (calculs, renvoie des tableaux), `src/graphiques.py` (figures Plotly), `app/tableau_bord.py` (mise en page seule). Configuration versionnée dans `.streamlit/config.toml` : télémétrie coupée, thème accordé aux figures.
+
+### 3. Mesure : la charge du navigateur n'est pas un problème
+
+Inquiétude exprimée puis **mesurée**, au lieu d'être supposée :
+
+| | Serveur | Poids envoyé |
+|---|---|---|
+| Une carte Plotly (233 664 cases) | 0,11 s | 2,7 Mo |
+| Deux cartes côte à côte | 0,17 s | 5,4 Mo |
+| La même en image matplotlib | 0,05 s | 0,12 Mo |
+
+Plotly est 22 fois plus lourd, mais 5,4 Mo en local est négligeable. Aucune raison de renoncer à l'interaction ni de basculer sur une application de bureau. Réserve : le **temps de dessin dans le navigateur** n'a pas pu être mesuré depuis le serveur.
+
+### 4. Décisions de lecture prises en construisant
+
+- **Échelle de couleur calée sur le 99e centile**, pas sur le maximum. Le Grand Est paraissait pâle alors qu'aucune valeur n'était aberrante : ses journées record (30 juin 2025, jusqu'à 3 824 MW et **53 % de couverture**) écrasaient l'échelle. Le plafond passe ainsi de 3 824 à 1 156 MW.
+- **Trois modes d'échelle** en comparaison : commune, propre à chacune, normalisée. Le mode normalisé s'appelle « 99e centile = 1 » et non « de 0 à 1 », car environ 1 % des valeurs dépassent 1. Défaut relevé par Bryan sur une infobulle affichant 1,14.
+- **Quantifier plutôt que corriger** les valeurs négatives d'avant 2020. Poids mesuré en Nouvelle-Aquitaine : **0,021 %** du niveau de consommation. Harmoniser aurait détruit l'information d'autoconsommation pour un effet deux mille fois inférieur au signal.
+- **Écarter les années incomplètes**, détecté automatiquement (moins de 350 jours) plutôt que codé en dur. 2026 ne couvre que **120 jours**, uniquement des mois froids : incluse, elle simulait une hausse brutale de consommation qui n'est qu'un effet de calendrier.
+
+### 5. Quatre défauts trouvés en auditant avant de committer
+
+Audit demandé par Bryan avant tout envoi. Le premier était grave.
+
+| Défaut | Constat | Correction |
+|---|---|---|
+| **Agrégation nationale de taux** | « France entière » **additionnait** `tco_solaire` sur 12 régions : médiane affichée **33,3 %** contre **2,6 %** en réalité, maximum **620 %** au lieu de 47 %, et jusqu'à **1 100 %** pour `tch_solaire` | `agreger_national` recalcule les taux à partir des sommes, et **lève une erreur** pour `tch_solaire`, dont la référence (puissance installée) n'est pas une colonne. L'option est retirée de l'interface |
+| **Saisons déséquilibrées** | L'onglet « Par saison » incluait 2026 tronquée : 330 jours d'hiver et 337 de printemps contre 276 d'été | Années incomplètes retirées du curseur. Les quatre saisons pèsent désormais 271 à 276 jours |
+| **Ponctuation détruite** | Un `.replace(",", " ")` destiné aux milliers était appliqué à la phrase entière : « Avant 2020  RTE reportait  d'où… » | Fonction `nombre()` appliquée au seul nombre, avec virgule décimale française |
+| **Avertissement trop large** | Un message signalait la rupture de 2021 sur des variables qu'elle ne concerne pas | Message conditionnel à la variable et à la région, et chiffré |
+
+Enseignement de méthode : **un code HTTP 200 ne prouve rien** pour une application Streamlit, qui répond 200 en affichant une trace d'erreur dans la page. La vérification porte désormais sur la chaîne d'imports et l'exécution réelle.
+
+Piège rencontré : Streamlit recharge le fichier de page mais **pas toujours les modules importés**. Après modification de `src/`, il faut arrêter et relancer l'application.
+
+### 6. État
+
+Trois pages : **Cartes de chaleur** (opérationnelle, comparaison à deux régions, trois modes d'échelle, sept variables), **Profils journaliers** (opérationnelle, onglets par saison et par année), **Qualité des données** (coquille vide).
+
+Résultat marquant obtenu au passage, sur la demande nette médiane en Nouvelle-Aquitaine : le creux de mi-journée passe de 4 440 MW en 2013 à **1 791 MW** en 2025, et la remontée du soir est multipliée par **6,8** (328 vers 2 237 MW). Surtout, l'écart entre le niveau de nuit et le creux de midi **change de signe en 2019** : la mi-journée devient le moment où le réseau travaille le moins, alors que c'était l'inverse jusque-là. À confirmer et à interpréter avec Bryan.
+
+### 7. Points ouverts
+
+- Page « Qualité des données » à construire, et page « Équilibrage » (sous-question 3) à créer.
+- `notebooks/02_profils_saisonniers.py` et `03_brouillon_visuel.py` font désormais double emploi avec le tableau de bord : à réécrire pour qu'ils appellent `src/analyses.py`, ou à supprimer.
+- Trois figures proposées et non faites : profondeur du creux en courbe, distribution horaire de la demande nette, normalisation par jour.
+- Le temps de dessin côté navigateur reste non mesuré.
+
+---
+
 ## 2026-07-26 (suite 3) : recensement des ruptures temporelles
 
 Détection systématique menée **avant** toute recherche de cause, pour ne pas ne trouver que ce qu'on cherchait. Referme la phase exploratoire.

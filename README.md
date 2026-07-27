@@ -33,9 +33,18 @@ Prérequis : [uv](https://docs.astral.sh/uv/).
 # 1. Installer l'environnement (Python + dépendances, versions verrouillées)
 uv sync
 
-# 2. Télécharger les données depuis l'API ODRE (~60 Mo, écrit dans data/)
+# 2. Télécharger les données depuis l'API ODRE (~86 Mo, écrit dans data/)
 uv run python src/download.py
+
+# 3. Ouvrir le tableau de bord interactif
+uv run streamlit run app/tableau_bord.py
 ```
+
+Les scripts d'analyse de `notebooks/` sont découpés en cellules `# %%` et
+s'exécutent pas à pas dans un éditeur comme Spyder.
+
+> Après avoir modifié un fichier de `src/`, **arrêter et relancer** le tableau de
+> bord : Streamlit recharge la page mais pas toujours les modules qu'elle importe.
 
 ## 🗂️ Structure
 
@@ -44,10 +53,15 @@ integration-solaire-reseau-france/
 ├── data/                 # données téléchargées (non versionnées)
 ├── src/
 │   ├── download.py       # récupération des données via l'API ODRE
-│   └── preparation.py    # chargement et nettoyage (source unique)
+│   ├── preparation.py    # chargement et nettoyage (source unique)
+│   ├── analyses.py       # calculs, renvoient des tableaux
+│   └── graphiques.py     # figures Plotly
+├── app/
+│   └── tableau_bord.py   # tableau de bord Streamlit (mise en page seule)
 ├── notebooks/
 │   ├── 01_exploration.py         # contrôle qualité des données
-│   └── 02_profils_saisonniers.py # sous-question 1 : profils par saison
+│   ├── 02_profils_saisonniers.py # sous-question 1 : profils par saison
+│   └── 03_brouillon_visuel.py    # brouillon d'exploration visuelle
 ├── figures/              # figures produites par les scripts
 ├── docs/
 │   ├── dictionnaire_donnees.md   # référence des variables

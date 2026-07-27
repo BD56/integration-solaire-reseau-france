@@ -1,0 +1,15 @@
+# Configuration du tableau de bord Streamlit.
+# Versionnée pour que toute personne qui clone le dépôt obtienne le même
+# comportement et la même apparence, sans message d'accueil ni télémétrie.
+
+[browser]
+# Coupe l'envoi de statistiques d'usage à Streamlit.
+gatherUsageStats = false
+
+[theme]
+# Couleurs cohérentes avec celles des figures (voir src/graphiques.py).
+base = "light"
+primaryColor = "#eda100"          # ambre, la teinte du solaire
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f6f5f1"
+textColor = "#0b0b0b"
