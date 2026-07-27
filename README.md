@@ -114,18 +114,41 @@ mais la forme de la journée reste la même.
 
 Mesuré sur la demande nette médiane en Nouvelle-Aquitaine :
 
-| Année | Creux de mi-journée | Remontée du soir | Écart nuit / midi |
-|---|---|---|---|
-| 2013 | 4 440 MW | 328 MW | **−567 MW** |
-| 2019 | 3 467 MW | 1 012 MW | **+192 MW** |
-| 2025 | **1 791 MW** | **2 237 MW** | **+1 452 MW** |
+| Année | Creux de mi-journée | Remontée du soir |
+|---|---|---|
+| 2013 | 4 440 MW | 328 MW |
+| 2025 | **1 791 MW** | **2 237 MW** |
 
-La dernière colonne compare le milieu de journée à la nuit. Elle est négative
-jusqu'en 2018 (le réseau travaille plus le jour que la nuit, l'ordre attendu),
-**change de signe en 2019**, et ne cesse de croître ensuite.
+Le creux a chuté de 60 % et la remontée du soir a été multipliée par près de 7.
 
-> ⚠️ Résultat à confirmer : il ne porte encore que sur deux régions, et la période
-> traverse un changement de convention de RTE en 2020.
+### L'ordre de la journée s'est inversé
+
+Le moment où le réseau travaille le moins n'est plus la nuit, mais le **milieu de
+journée**. Mesuré sans aucune borne arbitraire, en cherchant simplement l'heure
+du minimum du profil journalier :
+
+| Nouvelle-Aquitaine | 2013 | 2016 | 2018 | **2019** | 2022 | 2025 |
+|---|---|---|---|---|---|---|
+| Heure du minimum | 4 h | 4 h | 4 h | **16 h** | 16 h | 15 h |
+
+Ce résultat est soumis à quatre contrôles dans
+[`notebooks/03_verification_basculement.py`](notebooks/03_verification_basculement.py) :
+
+- **témoin** : la consommation seule ne bascule dans **aucune** des 12 régions.
+  Le phénomène n'apparaît qu'après soustraction du solaire, il ne vient donc pas
+  d'un changement d'habitudes ;
+- **éolien** : retirer l'éolien en plus du solaire ne change pas le verdict ;
+- **ordre** : les 6 régions qui basculent ont toutes une couverture solaire
+  supérieure à **6,3 %**, les 6 autres inférieure à **5,1 %**, sans chevauchement.
+  Corrélation entre l'année de bascule et la couverture : **r = −0,86** ;
+- **robustesse** : une première mesure, fondée sur des fenêtres horaires choisies
+  à la main, donnait quatre années différentes selon les bornes. Elle a été
+  écartée au profit de la mesure sans paramètre ci-dessus.
+
+> ⚠️ **À formuler prudemment.** La bascule est **durable** en Nouvelle-Aquitaine
+> (2019) et en Occitanie (2021), **récente ou instable** dans quatre autres
+> régions, et **absente** dans les six dernières. On ne peut donc pas dire que
+> « la France a basculé ».
 
 ### Le profil d'une journée, par saison
 

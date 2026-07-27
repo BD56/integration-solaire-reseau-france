@@ -6,6 +6,60 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-27 (suite) : le basculement de l'ordre de la journée, vérifié
+
+Le résultat pressenti la veille est soumis à quatre contrôles. Il tient, mais la **mesure initiale a dû être remplacée**. Code rejouable dans `notebooks/03_verification_basculement.py`.
+
+### 1. Le résultat, formulé prudemment
+
+Dans les régions très solaires, le moment où le réseau travaille le moins n'est plus la nuit mais le **milieu de journée**. Heure du minimum de la demande nette médiane en Nouvelle-Aquitaine :
+
+| 2013 | 2016 | 2018 | **2019** | 2022 | 2025 |
+|---|---|---|---|---|---|
+| 4 h | 4 h | 4 h | **16 h** | 16 h | 15 h |
+
+### 2. Les quatre contrôles
+
+**Témoin, le plus décisif.** La consommation seule ne bascule dans **aucune des 12 régions**. Le phénomène n'apparaît qu'après soustraction du solaire : il ne peut donc pas venir d'un changement d'habitudes de consommation.
+
+**Éolien.** Les deux définitions de demande nette donnent le même verdict pour **10 régions sur 12**. L'éolien n'explique pas le phénomène.
+
+**Ordre.** Les régions basculent dans l'ordre de leur équipement, sans chevauchement :
+
+| | Couverture solaire |
+|---|---|
+| 6 régions qui basculent | de **6,3 %** à 15,4 % |
+| 6 régions qui ne basculent pas | de 0,6 % à **5,1 %** |
+
+Corrélation entre l'année de bascule et la couverture : **r = −0,86**, contre −0,76 avec la production absolue. **La couverture prédit mieux que la production** : l'Auvergne-Rhône-Alpes produit 356 MW, le troisième volume du pays, et ne bascule jamais, car sa consommation (7 107 MW de moyenne) est trop élevée pour que ce solaire pèse. C'est la **part**, pas le volume.
+
+**Robustesse, qui a invalidé la mesure initiale.** La première mesure comparait un creux (10 h-16 h) à un niveau de nuit (2 h-5 h), deux fenêtres choisies à la main. Testée sur 16 combinaisons, elle donnait **quatre années différentes** : 2015, 2016, 2019 ou 2021. Le résultat dépendait donc en partie d'un choix arbitraire.
+
+**Mesure retenue à la place, sans aucun paramètre** : l'heure à laquelle se situe le minimum du profil journalier. On ne choisit plus de fenêtre, on constate où est le point le plus bas. L'année 2019 survit à ce changement pour la Nouvelle-Aquitaine ; l'Occitanie passe en revanche de 2019 à 2021, l'ancienne mesure étant trop empressée.
+
+### 3. Stabilité, à ne pas passer sous silence
+
+| Région | Bascule | Verdict |
+|---|---|---|
+| Nouvelle-Aquitaine | 2019 | **durable** |
+| Occitanie | 2021 | **durable** |
+| Pays de la Loire | 2025 | durable (une seule année observée) |
+| Bourgogne-Franche-Comté | 2025 | durable (une seule année observée) |
+| Provence-Alpes-Côte d'Azur | 2023 | **instable**, retour en 2024 |
+| Centre-Val de Loire | 2021 | **instable**, retour en 2022 |
+
+**Formulation à retenir** : établi pour deux régions, émergent pour quatre autres, absent pour six. Ne **pas** écrire que « la France a basculé en 2019 ».
+
+### 4. Ce que ça apporte au projet
+
+C'est le premier résultat substantiel, et il répond directement à la problématique : le solaire ne se contente pas d'ajouter de l'électricité, il **change la forme de la journée**. Un réseau conçu pour un creux nocturne doit désormais gérer un creux de mi-journée suivi d'une remontée brutale. Il donne aussi un seuil indicatif : la bascule survient autour de **5 à 6 % de couverture solaire**.
+
+### 5. Enseignement de méthode
+
+Une mesure dépendant de bornes choisies à la main doit être testée sur plusieurs jeux de bornes **avant** d'être publiée. Ici, quatre années différentes selon les fenêtres : sans ce contrôle, le projet aurait annoncé une date en partie arbitraire. Quand une mesure sans paramètre existe, elle est préférable.
+
+---
+
 ## 2026-07-27 : tableau de bord Streamlit, et bascule vers la visualisation
 
 Changement de méthode acté, puis construction d'un tableau de bord interactif.
