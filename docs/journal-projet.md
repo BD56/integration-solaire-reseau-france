@@ -71,7 +71,7 @@ Résultat marquant obtenu au passage, sur la demande nette médiane en Nouvelle-
 ### 7. Points ouverts
 
 - Page « Qualité des données » à construire, et page « Équilibrage » (sous-question 3) à créer.
-- `notebooks/02_profils_saisonniers.py` et `03_brouillon_visuel.py` font désormais double emploi avec le tableau de bord : à réécrire pour qu'ils appellent `src/analyses.py`, ou à supprimer.
+- ~~`notebooks/02_profils_saisonniers.py` et `03_brouillon_visuel.py` font double emploi avec le tableau de bord.~~ **Réglé** : `03_brouillon_visuel.py` supprimé, son rôle étant repris par le tableau de bord ; `02_profils_saisonniers.py` réécrit pour appeler `src/analyses.py` et ne plus rien calculer lui-même. Répartition des rôles actée : le **tableau de bord** sert à explorer, ce **script** fige quelques figures de vitrine visibles directement sur GitHub, sans quoi le dépôt ne montrerait aucun graphique à qui ne lance pas l'application.
 - Trois figures proposées et non faites : profondeur du creux en courbe, distribution horaire de la demande nette, normalisation par jour.
 - Le temps de dessin côté navigateur reste non mesuré.
 

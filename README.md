@@ -100,6 +100,42 @@ Le projet est mené en deux phases.
 Analyse à l'échelle du système (12 régions, pas de 30 minutes). Les écarts locaux,
 plus marqués, ne sont pas capturés ici ; ils relèvent de la phase 2.
 
+## 📊 Premiers résultats
+
+### La demande nette s'est inversée en Nouvelle-Aquitaine
+
+![Déformation de la demande nette de 2013 à 2025](figures/02_evolution_annuelle.png)
+
+Une courbe par année, du clair (2013) au foncé (2025). À gauche, la
+**Nouvelle-Aquitaine** (couverture solaire moyenne d'environ 16 %) : en 2013 la
+demande nette **culminait** en milieu de journée, elle y **creuse** aujourd'hui
+son minimum. À droite, les **Hauts-de-France** (environ 2 %) : le niveau baisse,
+mais la forme de la journée reste la même.
+
+Mesuré sur la demande nette médiane en Nouvelle-Aquitaine :
+
+| Année | Creux de mi-journée | Remontée du soir | Écart nuit / midi |
+|---|---|---|---|
+| 2013 | 4 440 MW | 328 MW | **−567 MW** |
+| 2019 | 3 467 MW | 1 012 MW | **+192 MW** |
+| 2025 | **1 791 MW** | **2 237 MW** | **+1 452 MW** |
+
+La dernière colonne compare le milieu de journée à la nuit. Elle est négative
+jusqu'en 2018 (le réseau travaille plus le jour que la nuit, l'ordre attendu),
+**change de signe en 2019**, et ne cesse de croître ensuite.
+
+> ⚠️ Résultat à confirmer : il ne porte encore que sur deux régions, et la période
+> traverse un changement de convention de RTE en 2020.
+
+### Le profil d'une journée, par saison
+
+![Profils journaliers par saison](figures/01_profils_saisonniers.png)
+
+Trait plein : médiane. Tirets : moyenne. Bandes : quartiles et déciles. Un réseau
+se dimensionne sur le jour le plus contraignant et non sur le jour moyen : ce
+sont donc les déciles qui portent l'information utile.
+
 ## 📌 Statut
 
-🚧 En cours : pipeline de données en place. Analyse exploratoire à suivre.
+🚧 En cours. Pipeline de données, exploration et tableau de bord en place.
+Sous-questions 1 et 2 outillées, sous-question 3 (équilibrage) à traiter.
