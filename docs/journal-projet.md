@@ -6,6 +6,69 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-27 (suite 2) : sous-question 3, l'équilibrage
+
+Reprise à zéro après un premier essai infructueux. Code rejouable dans `notebooks/04_equilibrage.py`.
+
+### 1. Changement de méthode, et pourquoi
+
+Un premier essai reposait sur des régressions des variations de chaque levier sur celles du solaire. Il a été **abandonné** après contrôle, pour trois défauts cumulés :
+
+- **relation faible** : r² de 0,08 entre variation du solaire et variation de consommation ;
+- **relation non linéaire** : la pente locale de l'hydraulique varie de −0,96 à +1,95 selon l'ampleur de la variation, et la tranche des petites variations, qui contient la majorité des observations, se comporte à l'inverse des autres ;
+- **relation instable selon l'heure** : la pente passe de 0,03 à 11 h (r² = 0,001, soit rien) à 1,44 à 21 h.
+
+Un coefficient unique par levier ne pouvait donc rien résumer honnêtement.
+
+Une erreur de méthode est également reconnue : le « contrôle par l'identité comptable » avait été présenté comme une validation de la méthode. Or, l'identité étant vraie dans les données et la régression linéaire, **ce test ne pouvait pas échouer** sauf erreur de code. Il validait l'absence de bogue, rien de plus.
+
+Erreur de conduite reconnue aussi : chaque étape intermédiaire avait été présentée comme un résultat, puis corrigée au contrôle suivant, trois fois de suite. Bryan a interrompu, à juste titre.
+
+**Protocole retenu à sa demande** : idées → hypothèses → tests → verdict. Avec deux garde-fous : le **critère de validation est écrit avant tout calcul**, et les **hypothèses rejetées restent consignées**, faute de quoi « changer d'idée » revient à ne garder que ce qui arrange.
+
+Critère commun fixé à l'avance : validée si |r| > 0,7 dans le sens prédit, rejetée si |r| < 0,3 ou sens contraire, indécise entre les deux. Ce seuil est plus exigeant que la significativité statistique, qui se situe vers r = 0,55 pour 13 points.
+
+Les tests ne comportent **aucune régression** : uniquement des profils horaires et des maxima, qui ne supposent aucune forme de relation. Ils portent tous sur la France entière, l'échelle régionale ayant été écartée (voir plus bas).
+
+### 2. Pourquoi le niveau national
+
+Vérifié sur les 12 régions : `ech_physiques` **domine dans 8 régions sur 12**, jusqu'à 94 % pour les Pays de la Loire, et **quatre régions présentent un coefficient positif** (Auvergne-Rhône-Alpes +1,27, Normandie +1,20, Grand Est +0,82, Île-de-France +0,32), ce qui n'a aucun sens comme mécanisme d'équilibrage.
+
+Explication : une région n'a **aucune obligation de s'équilibrer**, elle évacue son solde chez la voisine. En additionnant les 12 régions, les flux interrégionaux s'annulent deux à deux et il ne reste que le solde avec l'étranger. Les mégawatts s'additionnant, l'agrégation est légitime.
+
+### 3. Les quatre verdicts
+
+| Hypothèse | r | r² | Verdict |
+|---|---|---|---|
+| **H1** le pompage se déplace vers la mi-journée | **+0,90** | 0,82 | **VALIDÉE** |
+| **H3** le nucléaire module | **−0,86** | 0,75 | **VALIDÉE** |
+| H4 la remontée du soir s'accélère | −0,45 | 0,21 | REJETÉE |
+| H2 les échanges évacuent le surplus de midi | −0,08 | 0,01 | REJETÉE |
+
+**H1, le résultat le plus net.** Le pompage de mi-journée passe de 288 MW en 2013 à **1 608 MW en 2025**, soit ×5,6, pendant que le pompage nocturne recule de 2 305 à 1 450 MW. Surtout, l'**heure du maximum de pompage**, figée à 4 h 30 pendant douze années consécutives, **bascule à 15 h en 2025**. On stockait la nuit avec le surplus nucléaire, on stocke désormais à midi avec le surplus solaire.
+
+**H3, contre l'attente.** Le rapport entre production nucléaire de mi-journée et de nuit passe de 1,037 en 2013 à **0,956 en 2025**, franchissant 1 en 2024 : le nucléaire produit désormais **moins à midi que la nuit**. C'était l'hypothèse annoncée comme la moins probable. L'affirmation antérieure « le nucléaire ne varie pas, ce n'est pas un objet d'étude dynamique » reste vraie en **amplitude**, mais il ne tourne plus en base pure.
+
+**H4 rejetée, avec une précision indispensable.** La rampe de soirée passe de 2 943 MW par demi-heure en 2013 à 2 734 en 2025 : sens contraire à la prédiction. Cela ne contredit **pas** le résultat de la sous-question 2 (remontée du soir multipliée par 6,8 en Nouvelle-Aquitaine), car ce ne sont pas les mêmes grandeurs : une **amplitude** en MW là-bas, une **vitesse** en MW par demi-heure ici. Le système doit remonter plus **haut**, pas plus **vite**.
+
+**H2 rejetée.** Aucune tendance du solde de mi-journée. 2022 sort du lot en positif, la France ayant importé pendant la crise du parc nucléaire, ce qui recoupe la rupture déjà consignée.
+
+### 4. Réserve sur l'interprétation de r
+
+Ces corrélations sont calculées **contre l'année**, sur 13 points. Elles mesurent la **régularité d'une évolution**, pas une force causale. « r² = 0,82 pour H1 » ne signifie pas que le solaire explique 82 % du pompage, mais que la part de mi-journée croît très régulièrement. Le lien avec le solaire vient du raisonnement et du calendrier, pas de ce chiffre.
+
+### 5. Réponse à la sous-question 3
+
+Le système absorbe le surplus solaire de mi-journée par **deux leviers** : le **stockage par pompage**, qui a changé d'horaire, et la **modulation du nucléaire**, qui a cessé de tourner en base pure. Ni les échanges avec l'étranger, ni une accélération des rampes de soirée ne jouent de rôle détectable.
+
+### 6. Points ouverts
+
+- La restitution du stockage reste invisible : la colonne `pompage` n'enregistre que le remplissage, le turbinage étant fondu dans `hydraulique`.
+- L'approche par **journées jumelles** (deux jours semblables sauf l'ensoleillement) n'a pas été menée. Elle resterait la plus proche d'une expérience et permettrait de quantifier les contributions sans supposer de forme.
+- Les pages « Qualité des données » et « Équilibrage » du tableau de bord restent à construire.
+
+---
+
 ## 2026-07-27 (suite) : le basculement de l'ordre de la journée, vérifié
 
 Le résultat pressenti la veille est soumis à quatre contrôles. Il tient, mais la **mesure initiale a dû être remplacée**. Code rejouable dans `notebooks/03_verification_basculement.py`.

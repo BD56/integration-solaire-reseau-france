@@ -158,7 +158,33 @@ Trait plein : médiane. Tirets : moyenne. Bandes : quartiles et déciles. Un ré
 se dimensionne sur le jour le plus contraignant et non sur le jour moyen : ce
 sont donc les déciles qui portent l'information utile.
 
+### Comment le système absorbe ce surplus de mi-journée
+
+Quatre hypothèses, testées avec leur critère de validation **écrit avant tout
+calcul**, dans
+[`notebooks/04_equilibrage.py`](notebooks/04_equilibrage.py) :
+
+| Hypothèse | Verdict |
+|---|---|
+| Le **pompage** s'est déplacé de la nuit vers la mi-journée | ✅ validée (r = +0,90) |
+| Le **nucléaire** module et ne tourne plus en base pure | ✅ validée (r = −0,86) |
+| Les **échanges** avec l'étranger évacuent le surplus de midi | ❌ rejetée (r = −0,08) |
+| La **remontée du soir** s'accélère | ❌ rejetée (r = −0,45) |
+
+**Le pompage a changé d'horaire.** L'heure du maximum, figée à 4 h 30 pendant
+douze années consécutives, bascule à **15 h en 2025**. Le stockage de mi-journée
+est multiplié par 5,6 sur la période, pendant que le stockage nocturne recule.
+On stockait la nuit avec le surplus nucléaire, on stocke désormais à midi avec le
+surplus solaire.
+
+**Le nucléaire produit maintenant moins à midi que la nuit.** Le rapport entre
+mi-journée et nuit passe de 1,037 en 2013 à 0,956 en 2025, franchissant 1 en 2024.
+
+> Les hypothèses rejetées sont conservées dans le script : un rejet est un
+> résultat, et n'afficher que ce qui fonctionne reviendrait à choisir ses preuves.
+
 ## 📌 Statut
 
-🚧 En cours. Pipeline de données, exploration et tableau de bord en place.
-Sous-questions 1 et 2 outillées, sous-question 3 (équilibrage) à traiter.
+🚧 En cours. Pipeline de données, exploration, tableau de bord et trois
+sous-questions traitées. Restent la dimension géographique (phase 2) et un
+éventuel volet de prévision, qui exigerait une source météorologique externe.
