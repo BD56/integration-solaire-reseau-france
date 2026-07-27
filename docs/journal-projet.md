@@ -6,6 +6,43 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 : note de réflexion sur l'agrégation spatiale de la météo (phase 2)
+
+Note rédigée par Bryan, consignée avant tout début de travaux. Elle répond à l'objection soulevée en préparant la phase 2 : *peut-on résumer l'ensoleillement d'une région entière par un seul chiffre ?*
+
+### 1. Le moyennage spatial n'est pas un défaut à subir
+
+La production solaire régionale est **déjà une somme sur des milliers d'installations dispersées**. Une irradiance moyennée reproduit donc la physique du système mieux qu'une mesure ponctuelle, même parfaite. L'objet à expliquer étant lui-même un agrégat, l'explicative doit l'être aussi.
+
+### 2. La vraie question est la pondération, et elle diffère selon la variable
+
+Il ne s'agit pas de choisir *où* moyenner mais *avec quel poids* :
+
+| Variable | Pondération | Motif |
+|---|---|---|
+| Irradiance | **puissance solaire installée** | c'est là que le soleil produit |
+| Température | **population** | le sujet est le chauffage |
+
+**Ce ne sont pas les mêmes cartes.** Utiliser la même pondération pour les deux serait une erreur.
+
+### 3. L'agrégation est validable, pas à postuler
+
+L'**indice de ciel clair** dérivé de la production elle-même (production rapportée à son enveloppe récente) est un indicateur de nébulosité **indépendant de toute source météo**. Une agrégation candidate se juge donc à sa corrélation avec cet indice, au lieu d'être supposée bonne.
+
+Cet indice avait déjà été construit lors de l'étude de faisabilité du 2026-07-25 : autocorrélation journalière de 0,430 à J-1, écart-type de 0,226 pour une moyenne de 0,717.
+
+### 4. L'exigence dépend de l'usage
+
+Un résumé grossier suffit pour **expliquer les contrastes régionaux** : l'écart entre l'Occitanie et les Hauts-de-France écrase largement l'erreur d'agrégation. Il en faudrait un beaucoup plus fin s'il s'agissait un jour de **prévoir**.
+
+### 5. À vérifier avant de s'engager
+
+La pondération par capacité suppose de connaître la puissance installée à une **maille plus fine que la région**. Or les colonnes `tch_` ne donnent que le total régional.
+
+*Complément factuel sur l'état du dépôt* : la fonction `capacite_installee()` de `src/analyses.py` déduit bien une puissance installée en inversant le taux de charge, mais **à la maille régionale uniquement**, et seulement à partir de 2020. Elle ne lève donc pas cette réserve. Une source externe serait nécessaire, par exemple le registre des installations de production d'ODRE.
+
+---
+
 ## 2026-07-27 (suite 2) : sous-question 3, l'équilibrage
 
 Reprise à zéro après un premier essai infructueux. Code rejouable dans `notebooks/04_equilibrage.py`.
