@@ -77,6 +77,34 @@ Deux points utiles, tous deux exploités par `src/preparation.py` :
   information réellement nouvelle (la taille du parc n'est nulle part ailleurs dans
   le jeu), disponible sur **2020-2026 seulement**. Voir `capacite_installee()`.
 
+### Le TCH comme approche de la ressource solaire, et ses limites
+
+La production en MW **mélange deux causes** : la ressource reçue et la taille du
+parc installé. On ne peut donc pas conclure d'une forte production qu'une région
+est ensoleillée. Le TCH, lui, **divise par le parc** : ce qui reste mesure ce que
+chaque mégawatt installé parvient à produire, ce qui approche la ressource.
+
+C'est le seul indicateur interne au jeu permettant de séparer les deux causes, et
+il évite l'erreur qui consiste à déduire l'ensoleillement de la production.
+
+⚠️ **Mais ce n'est pas de l'irradiance.** Quatre réserves à garder en tête :
+
+| Réserve | Effet |
+|---|---|
+| **Écrêtement** | Si le réseau ne peut absorber toute la production, elle est coupée. Le TCH baisse **sans que le soleil ait diminué**, et cela touche d'abord les régions les plus solaires : le biais joue donc dans le sens même qu'on cherche à mesurer. |
+| **Orientation et inclinaison** des panneaux | Deux parcs sous le même soleil n'ont pas le même rendement. |
+| **Technologie et âge** du parc | Un parc récent produit davantage à capacité égale. |
+| **Disponible à partir de 2020 seulement** | Sept années restent hors de portée. |
+
+S'y ajoute que la formule du TCH **n'a jamais pu être vérifiée sur les données**,
+faute de connaître la puissance installée, contrairement au TCO dont la formule a
+été confirmée au centième de point près. On fait donc confiance à la définition
+de RTE.
+
+**Conclusion d'usage** : le TCH permet de dire *si* la ressource explique une part
+des écarts régionaux, pas de la quantifier précisément. Pour cela il faudra une
+source météorologique externe.
+
 ## 🧮 Colonnes calculées
 
 Ces colonnes ne viennent pas de la source : elles sont fabriquées par

@@ -6,6 +6,39 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 (suite) : plan de la phase 2, et prédiction enregistrée avant mesure
+
+Aucun calcul lancé. Cette entrée fixe le plan et **enregistre une attente avant de la vérifier**, pour qu'elle ne puisse pas être réécrite après coup.
+
+### 1. Ordre des travaux, dicté par la note précédente
+
+Puisqu'une agrégation spatiale **se valide** par sa corrélation avec l'indice de ciel clair, il faut construire l'instrument de mesure avant la chose à mesurer.
+
+| Étape | Dépendance externe |
+|---|---|
+| **1.** Séparer ressource et parc avec `tch_solaire` | aucune |
+| **2.** Construire l'indice de ciel clair dans `src/` | aucune |
+| **3.** Récupérer la météo et départager les pondérations candidates | Open-Meteo |
+| **4.** Répondre à la phase 2, puis envisager la modélisation | dépend de 3 |
+
+Les étapes 1 et 2 peuvent démarrer immédiatement. L'indice de ciel clair n'existe aujourd'hui que dans les tests non versionnés du 2026-07-25.
+
+### 2. Pourquoi commencer par le TCH
+
+La production en MW mélange **ressource** et **parc installé**. Le TCH divise par le parc, ce qui approche la ressource. C'est le seul indicateur interne au jeu permettant cette séparation, et son emploi répare directement l'erreur du 2026-07-26, où les régions avaient été classées « par ensoleillement » sur la foi de leur production.
+
+Les limites de cet usage (écrêtement, orientation, technologie, absence avant 2020, formule non vérifiable) sont détaillées dans le [dictionnaire](dictionnaire_donnees.md).
+
+L'**écrêtement** est la plus gênante : il abaisse le TCH sans baisse d'ensoleillement, et frappe d'abord les régions les plus solaires. Le biais joue donc dans le sens même qu'on cherche à mesurer.
+
+### 3. Prédiction enregistrée avant mesure
+
+> **Le parc installé expliquera l'essentiel des écarts régionaux, la ressource assez peu.** Attendu : des productions variant d'un facteur proche de 10 entre régions, pour un taux de charge ne variant que d'un facteur 1,5 environ.
+
+Cette attente est consignée **avant** tout calcul. Si la mesure la contredit, c'est la prédiction qui a tort, et elle restera écrite ici.
+
+---
+
 ## 2026-07-28 : note de réflexion sur l'agrégation spatiale de la météo (phase 2)
 
 Note rédigée par Bryan, consignée avant tout début de travaux. Elle répond à l'objection soulevée en préparant la phase 2 : *peut-on résumer l'ensoleillement d'une région entière par un seul chiffre ?*
