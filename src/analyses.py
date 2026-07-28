@@ -179,6 +179,30 @@ def ciel_clair_theorique(
     return 1098 * sinus_positif * np.exp(-0.059 / sinus_positif)
 
 
+def irradiance_extraterrestre(
+    horodatage_utc: pd.Series, latitude: float, longitude: float
+) -> pd.Series:
+    """Irradiance sur un plan horizontal **au sommet de l'atmosphère**, en W/m².
+
+    C'est le dénominateur de l'**indice de clarté** de Liu et Jordan (1960) :
+
+        k_t = irradiance mesurée au sol / irradiance extraterrestre
+
+    Contrairement à `ciel_clair_theorique`, aucun modèle d'atmosphère n'entre en
+    jeu, seulement de l'astronomie : la constante solaire, la légère variation de
+    la distance Terre-Soleil dans l'année, et la hauteur du soleil.
+
+        irradiance = 1361 × (1 + 0,033 × cos(2π n / 365)) × sin(hauteur)
+
+    Le terme en cosinus vaut l'excentricité de l'orbite : la Terre est environ
+    3,3 % plus proche du soleil début janvier. Nul la nuit, par convention.
+    """
+    jour = horodatage_utc.dt.dayofyear
+    correction_distance = 1 + 0.033 * np.cos(2 * np.pi * jour / 365)
+    sinus = hauteur_solaire(horodatage_utc, latitude, longitude)
+    return (1361 * correction_distance * sinus).clip(lower=0)
+
+
 def ciel_clair_incline(
     horodatage_utc: pd.Series,
     latitude: float,
