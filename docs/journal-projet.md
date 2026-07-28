@@ -6,7 +6,9 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
-## 2026-07-28 (suite 4) : indice construit, deux tests réussis, un test invalidé et deux diagnostics ratés
+## 2026-07-28 (suite 4) : indice de ciel clair construit, mais NON VALIDÉ
+
+> **État à retenir** : l'indice existe dans `src/analyses.py`, deux tests propres l'appuient, mais **aucune validation n'a abouti**. Ne pas s'en servir comme arbitre avant confrontation à une source météo externe. Détail en section 9.
 
 Suite du protocole. Code dans `src/analyses.py` (`indice_ciel_clair`, `indice_journalier`, `hauteur_solaire`, `ciel_clair_theorique`) et `notebooks/06_indice_ciel_clair.py`. **Travail en cours, conclusion non atteinte.**
 
@@ -67,11 +69,61 @@ L'enveloppe est donc relativement bien plus haute en hiver que ne le prévoit un
 
 En janvier, l'indice atteint **3,751** au maximum, et son quantile 99 monte à 1,306. Une valeur de 3,75 est absurde. C'est le défaut **inverse** de celui redouté : dans un mois durablement couvert, l'enveloppe se cale sur la moins mauvaise des mauvaises journées, donc trop bas, et une éclaircie exceptionnelle fait exploser le rapport. L'enveloppe est donc **instable en hiver**, ce qui interdit de lire ses valeurs hivernales extrêmes au pied de la lettre.
 
-### 7. Prochaine étape
+### 7. Test sur plan incliné : échoué, mais son hypothèse était fausse
 
-Recalculer le ciel clair théorique **sur plan incliné à 30°** et refaire la comparaison. Si le rapport devient plat, l'enveloppe est saine et le cycle saisonnier de l'indice est météorologique. S'il reste déformé, l'enveloppe est mauvaise et l'indice inadapté.
+Ajout de `ciel_clair_incline()` dans `src/analyses.py` : modèle direct plus diffus isotrope, avec la simplification qu'un plan **plein sud** incliné de β voit le soleil comme une surface horizontale située à la latitude `latitude − β`.
 
-C'est le seul test proposé jusqu'ici qui puisse réellement invalider l'indice.
+**Critère fixé avant de lancer** : réussi si l'amplitude du rapport normalisé tombe sous 0,30 pour les trois régions **et** que l'ordre par latitude disparaît ; échoué si elle reste au-dessus de 0,50 ou si l'écart hivernal persiste dans le même sens.
+
+| Région | Latitude | Horizontal | Incliné 30° |
+|---|---|---|---|
+| Hauts-de-France | 49,9° N | 1,38 | **0,77** |
+| Nouvelle-Aquitaine | 45,2° N | 0,88 | **0,44** |
+| Provence-Alpes-Côte d'Azur | 43,9° N | 0,74 | **0,24** |
+
+**ÉCHOUÉ.** Les Hauts-de-France restent au-dessus du seuil de 0,50, et l'ordre par latitude est intact. Le balayage des inclinaisons (0° à 60°) montre qu'aucune valeur ne descend sous 0,68 pour cette région : ce n'est donc pas une question de mauvais réglage.
+
+L'inclinaison explique environ **la moitié** de l'écart, pas la totalité.
+
+### 8. Mais le paramètre central du test était une supposition
+
+Bryan a demandé pourquoi 30°. Réponse honnête : **affirmé sans vérification**, sur la seule règle empirique « latitude moins 10 à 15° ».
+
+Vérification faite ensuite sur le **registre national des installations** d'ODRE (`registre-national-installation-production-stockage-electricite-agrege-311224`) : il ne contient **ni inclinaison ni orientation**, mais révèle que le parc solaire français est **bimodal** :
+
+| Raccordement | Puissance | Part | Type |
+|---|---|---|---|
+| **BT** | 12 404 MW | **49,5 %** | toitures, inclinaison plutôt forte |
+| **HTA** | 11 739 MW | **46,9 %** | centrales au sol, inclinaison plutôt faible |
+| HTB (63 à 225 kV) | 865 MW | 3,4 % | grandes centrales |
+
+Le champ « technologie » ne distingue que photovoltaïque, thermodynamique et batterie : la **part de trackers reste inconnue**.
+
+**Conséquence** : une inclinaison unique de 30° plein sud ne représente pas un parc à moitié composé de toitures et à moitié de centrales au sol. Le test comparait donc l'enveloppe à un modèle reposant sur une hypothèse fausse par construction.
+
+L'échec **ne condamne donc pas l'enveloppe** : il montre que la référence théorique ne représentait pas le parc réel. Ni sauvetage ni condamnation possibles sur cette base.
+
+### 9. Décision : l'indice est gardé, mais NON VALIDÉ
+
+**Aucun des trois essais de validation n'a réellement testé l'enveloppe** : le premier était mal conçu (prémisse confondant saisonnalité géométrique et météorologique), le deuxième circulaire par construction, le troisième reposait sur une hypothèse fausse.
+
+**Décision prise avec Bryan** : l'indice reste dans le code, documenté, avec l'étiquette explicite **non validé**.
+
+⚠️ **Règle qui en découle : ne pas l'utiliser comme arbitre tant qu'il n'est pas validé.** Choisir une agrégation météo avec un juge de fiabilité inconnue reviendrait à bâtir sur du sable.
+
+Sa validation viendra de la **confrontation à une source météo externe**, ce que le protocole prévoyait dès le départ. Cette étape servira donc à deux choses : valider l'indice, puis s'en servir pour arbitrer.
+
+**Ce qui reste en sa faveur**, et ne dépend d'aucun modèle : la cohérence spatiale (r = −0,945, décroissance nette avec la distance) et le comportement des journées extrêmes.
+
+### 10. Acquis conservés de ce détour
+
+- **Trois fonctions de géométrie solaire** dans `src/analyses.py` : `hauteur_solaire`, `ciel_clair_theorique` (Haurwitz), `ciel_clair_incline`. Vérifiées à **écart nul aux solstices**, 0,41° à l'équinoxe. Calcul mené en heure UTC, ce qui écarte le piège du changement d'heure. Réutilisables pour tout travail ultérieur sur le solaire.
+- Le **fait sur la composition du parc** (moitié BT, moitié HTA), utile bien au-delà de cette question.
+- `CENTRES_REGIONS`, coordonnées approximatives des 12 régions.
+
+### 11. Prochaine étape
+
+Récupérer une source météo (Open-Meteo), qui servira d'abord à **valider l'indice**, puis à arbitrer les agrégations spatiales selon la note de réflexion du 2026-07-28.
 
 ### 8. Enseignement de méthode
 

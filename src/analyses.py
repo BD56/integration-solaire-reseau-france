@@ -179,6 +179,54 @@ def ciel_clair_theorique(
     return 1098 * sinus_positif * np.exp(-0.059 / sinus_positif)
 
 
+def ciel_clair_incline(
+    horodatage_utc: pd.Series,
+    latitude: float,
+    longitude: float,
+    inclinaison: float = 30.0,
+) -> pd.Series:
+    """Irradiance théorique par ciel clair sur un plan **incliné**, en W/m².
+
+    Les panneaux ne sont pas posés à plat mais inclinés, en général vers 30° au
+    sud en France. Un plan incliné capte bien mieux le soleil bas de l'hiver
+    qu'une surface horizontale, ce qui déforme fortement le profil saisonnier.
+
+    Simplification géométrique utilisée : pour un plan **orienté plein sud**,
+    l'angle d'incidence du rayonnement direct se calcule comme la hauteur du
+    soleil que verrait une surface horizontale située à la latitude
+    `latitude - inclinaison`. Cela évite la formule complète à cinq termes.
+
+    Le modèle sépare deux composantes, comme il est d'usage :
+
+    - le **direct**, dominant par ciel clair, projeté sur le plan incliné ;
+    - le **diffus**, supposé isotrope, dont le plan ne voit qu'une fraction
+      `(1 + cos(inclinaison)) / 2` puisqu'une partie du ciel lui est masquée.
+
+    Reste une approximation : l'albédo du sol est négligé, et le diffus réel
+    n'est pas isotrope. Suffisant pour comparer des **formes saisonnières**,
+    insuffisant pour prédire une production en valeur absolue.
+    """
+    sinus_hauteur = hauteur_solaire(horodatage_utc, latitude, longitude)
+    sinus_positif = sinus_hauteur.where(sinus_hauteur > 0.01)
+
+    # Masse d'air traversée, puis rayonnement direct normal (modèle de Meinel).
+    masse_air = 1 / sinus_positif
+    direct_normal = 1367 * 0.7 ** (masse_air ** 0.678)
+
+    # Global horizontal (Haurwitz), d'où l'on déduit le diffus par différence.
+    global_horizontal = 1098 * sinus_positif * np.exp(-0.059 / sinus_positif)
+    diffus_horizontal = (global_horizontal - direct_normal * sinus_positif).clip(lower=0)
+
+    # Un plan sud incliné voit le soleil comme une surface horizontale
+    # placée à la latitude décalée de l'inclinaison.
+    cos_incidence = hauteur_solaire(
+        horodatage_utc, latitude - inclinaison, longitude
+    ).clip(lower=0)
+
+    facteur_ciel = (1 + np.cos(np.radians(inclinaison))) / 2
+    return direct_normal * cos_incidence + diffus_horizontal * facteur_ciel
+
+
 def indice_ciel_clair(
     donnees: pd.DataFrame,
     fenetre_jours: int = 30,
@@ -215,13 +263,33 @@ def indice_ciel_clair(
     - `seuil_enveloppe` : en deçà, le rapport n'a pas de sens et diverge. Écarte
       les créneaux nocturnes.
 
+    ⚠️ **NON VALIDÉ à ce jour. Ne pas s'en servir comme arbitre.**
+
+    Trois tentatives de validation ont échoué sans qu'aucune ne teste réellement
+    l'enveloppe (journal du 2026-07-28, section 9) : la première confondait
+    saisonnalité géométrique et météorologique, la deuxième était **circulaire**
+    (l'enveloppe étant un quantile des mêmes données, environ 5 % des journées la
+    dépassent par construction), la troisième reposait sur une inclinaison de
+    panneaux supposée alors que le parc français est bimodal, moitié toitures et
+    moitié centrales au sol.
+
+    Deux tests propres, indépendants de tout modèle, restent en sa faveur : la
+    cohérence spatiale (corrélation entre régions décroissant avec la distance,
+    r = −0,945) et le comportement des journées extrêmes.
+
+    Sa validation exige une **source météorologique externe**. Tant qu'elle n'est
+    pas faite, cet indice ne doit pas servir à départager quoi que ce soit.
+
     Limites, connues d'avance :
 
     - l'indice capte **tout ce qui réduit la production**, pas seulement les
       nuages : écrêtement, neige, pannes, maintenance ;
     - il est **circulaire pour l'explication**. Dérivé de la production, il ne
       peut pas servir à l'expliquer. C'est un instrument de validation, jamais
-      une variable explicative.
+      une variable explicative ;
+    - il est **instable en hiver** : dans un mois durablement couvert,
+      l'enveloppe se cale trop bas et une éclaircie fait exploser le rapport,
+      jusqu'à 3,75 observé en janvier.
 
     Returns
     -------

@@ -72,6 +72,22 @@ Pièges vérifiés sur les données, à traiter systématiquement :
 
 Le recensement complet et son classement par importance sont dans le [journal](docs/journal-projet.md), entrée du 2026-07-26 (suite 3).
 
+## 5 bis. Discipline de méthode, imposée après plusieurs erreurs
+
+Ces règles viennent d'échecs constatés, détaillés dans le [journal](docs/journal-projet.md). Elles s'appliquent à tout nouveau calcul.
+
+**Écrire le critère de validation avant de calculer.** Sinon le critère se relâche une fois le résultat vu. Une prédiction se consigne dans le journal **avant** d'être vérifiée.
+
+**Conserver les hypothèses rejetées.** Un rejet est un résultat. Ne garder que ce qui fonctionne revient à choisir ses preuves.
+
+**Chercher la méthode établie avant d'improviser une mesure.** Pour une saisonnalité, il existe la décomposition STL, la force de saisonnalité de Hyndman, l'analyse spectrale, le test de Kruskal-Wallis. Trois mesures improvisées se sont révélées sans valeur au cours de ce projet.
+
+**Vérifier qu'un test peut échouer.** Question à poser systématiquement : *le résultat découle-t-il de la définition des grandeurs comparées ?* Si oui, le test ne prouve rien. Une validation doit confronter à une référence **extérieure** à ce qu'elle valide. C'est cette question qui a fait tomber le diagnostic circulaire de l'indice de ciel clair.
+
+**Se méfier des bornes choisies à la main.** Les faire varier avant de publier. La date du basculement de la demande nette passait de 2015 à 2021 selon les fenêtres horaires retenues, jusqu'à ce qu'une mesure sans paramètre la fixe.
+
+**Ne pas présenter une supposition comme un constat.** La production solaire mélange ressource et parc installé : en déduire un classement d'ensoleillement est une supposition, pas une mesure. Distinguer toujours ce que le code montre, ce qu'on en déduit, et ce qu'on suppose sans pouvoir le vérifier.
+
 ## 6. Principe méthodologique : pas de raisonnement en autarcie régionale
 
 Le réseau est **interconnecté**. « Une région ne produit pas telle filière localement » ne veut **pas** dire « cette région ne dépend pas de cette filière ».
