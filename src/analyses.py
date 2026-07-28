@@ -469,6 +469,153 @@ def completude_par_annee(donnees: pd.DataFrame, colonnes: list[str]) -> pd.DataF
     return resultat.round(1)
 
 
+# ---------------------------------------------------------------------------
+# Sous-question 3 : équilibrage. Ces fonctions sont partagées entre
+# `notebooks/04_equilibrage.py` et le tableau de bord, pour qu'un chiffre affiché
+# soit toujours celui que le script produit.
+# ---------------------------------------------------------------------------
+
+MI_JOURNEE, NUIT, SOIREE = (11, 15), (2, 5), (16, 21)
+SEUIL_VALIDE, SEUIL_REJETE = 0.7, 0.3
+
+COLONNES_EQUILIBRAGE = ["solaire", "consommation", "demande_nette", "pompage",
+                        "ech_physiques", "nucleaire", "hydraulique", "thermique"]
+
+
+def trame_nationale(donnees: pd.DataFrame) -> pd.DataFrame:
+    """Somme des 12 régions, pas de temps par pas de temps.
+
+    À l'échelle régionale, `ech_physiques` ne mesure pas un équilibrage : une
+    région n'a aucune obligation de s'équilibrer, elle évacue son solde chez la
+    voisine. En additionnant les 12 régions, les flux interrégionaux s'annulent
+    deux à deux et il ne reste que le solde de la France avec l'étranger.
+
+    ⚠️ `sum()` de pandas ignore les `NaN` : un créneau où une région manque
+    serait sommé sur 11 régions et non 12, ce qui fabriquerait un creux
+    artificiel de plusieurs gigawatts. La `demande_nette` est donc mise à `NaN`
+    sur ces créneaux (96 pas de temps de 2013, sans éolien).
+
+    Le remède est appliqué **à cette seule colonne**. Un filtre global effacerait
+    `pompage` et `nucleaire` sur toute la période antérieure à 2021, où une case
+    vide ne signifie pas « mesure manquante » mais « pas de centrale ici ».
+    """
+    cles = ["date_heure", "date", "annee", "heure_decimale"]
+    national = donnees.groupby(cles, as_index=False)[COLONNES_EQUILIBRAGE].sum()
+    complet = (donnees.groupby(cles)["demande_nette"].count()
+               == donnees["libelle_region"].nunique())
+    national = national.merge(complet.rename("douze_regions").reset_index(), on=cles)
+    national.loc[~national["douze_regions"], "demande_nette"] = np.nan
+    return national
+
+
+def profil_horaire_par_annee(trame: pd.DataFrame, colonne: str) -> pd.DataFrame:
+    """Profil horaire moyen, une ligne par année, une colonne par demi-heure."""
+    return trame.pivot_table(index="annee", columns="heure_decimale",
+                             values=colonne, aggfunc="mean")
+
+
+def moyenne_entre(profil: pd.DataFrame, bornes: tuple) -> pd.Series:
+    """Moyenne d'un profil horaire sur une plage d'heures."""
+    colonnes = [h for h in profil.columns if bornes[0] <= h <= bornes[1]]
+    return profil[colonnes].mean(axis=1)
+
+
+def rampe_du_soir(trame: pd.DataFrame, bornes: tuple = SOIREE,
+                  colonne: str = "demande_nette") -> pd.Series:
+    """Variation maximale par demi-heure en soirée, médiane par année.
+
+    ⚠️ Le `.diff()` est calculé **par journée**. Appliqué à une trame déjà
+    filtrée sur la fenêtre du soir, il enjamberait la nuit et comparerait le
+    dernier créneau de la veille au premier du jour : un saut de dix-neuf heures,
+    qui portait le maximum journalier dans 13,80 % des cas et inversait le
+    verdict de l'hypothèse (journal du 2026-07-28, suite 8).
+    """
+    fenetre = trame[trame["heure_decimale"].between(*bornes)].sort_values("date_heure").copy()
+    fenetre["variation"] = fenetre.groupby("date", observed=True)[colonne].diff()
+    return fenetre.groupby(["annee", "date"])["variation"].max().groupby("annee").median()
+
+
+def verdicts_equilibrage(trame: pd.DataFrame) -> pd.DataFrame:
+    """Les quatre hypothèses de la sous-question 3, avec leur critère préenregistré.
+
+    Chaque critère a été écrit **avant** tout calcul : validée si |r| > 0,7 dans
+    le sens prédit, rejetée si |r| < 0,3 ou si le sens est contraire. Les
+    hypothèses rejetées sont conservées, un rejet étant un résultat.
+    """
+    pompage = profil_horaire_par_annee(trame, "pompage").abs()
+    part_midi = moyenne_entre(pompage, MI_JOURNEE) / pompage.mean(axis=1)
+
+    echanges = moyenne_entre(profil_horaire_par_annee(trame, "ech_physiques"), MI_JOURNEE)
+
+    nucleaire = profil_horaire_par_annee(trame, "nucleaire")
+    rapport = moyenne_entre(nucleaire, MI_JOURNEE) / moyenne_entre(nucleaire, NUIT)
+
+    rampe = rampe_du_soir(trame)
+
+    lignes = []
+    for libelle, serie, sens in [
+        ("H1, le pompage se déplace vers la mi-journée", part_midi, +1),
+        ("H2, les échanges évacuent le surplus de midi", echanges, -1),
+        ("H3, le nucléaire module", rapport, -1),
+        ("H4, la remontée du soir s'accélère", rampe, +1),
+    ]:
+        r = float(np.corrcoef(serie.index, serie.values)[0, 1])
+        bon_sens = np.sign(r) == sens
+        if abs(r) > SEUIL_VALIDE and bon_sens:
+            etat = "validée"
+        elif abs(r) < SEUIL_REJETE or not bon_sens:
+            etat = "rejetée"
+        else:
+            etat = "indécise"
+        lignes.append({"hypothese": libelle, "r": round(r, 3), "etat": etat})
+    return pd.DataFrame(lignes)
+
+
+def temoin_saisonnier(trame: pd.DataFrame) -> pd.DataFrame:
+    """Le même effet est-il présent en été et absent en hiver ?
+
+    H1, H3 et H4 sont des corrélations contre l'année sur treize points : elles
+    établissent une régularité, pas une cause. Ce témoin n'est pas une
+    corrélation contre l'année : si le solaire est bien la cause, l'effet doit
+    être fort en été et faible en hiver. C'est un test qui peut échouer, et H1
+    échoue effectivement.
+    """
+    mois_trame = pd.to_datetime(trame["date"]).dt.month
+    lignes = []
+    for saison, mois in [("été", [6, 7, 8]), ("hiver", [12, 1, 2])]:
+        part = trame[mois_trame.isin(mois)]
+        pompage = profil_horaire_par_annee(part, "pompage").abs()
+        midi = moyenne_entre(pompage, MI_JOURNEE)
+        nucleaire = profil_horaire_par_annee(part, "nucleaire")
+        rapport = moyenne_entre(nucleaire, MI_JOURNEE) / moyenne_entre(nucleaire, NUIT)
+        rampe = rampe_du_soir(part)
+        conso = rampe_du_soir(part, colonne="consommation")
+        lignes.append({
+            "saison": saison,
+            "pompage de mi-journée": f"×{midi.iloc[-1] / midi.iloc[0]:.2f}",
+            "rapport nucléaire midi/nuit": f"{rapport.iloc[0]:.4f} → {rapport.iloc[-1]:.4f}",
+            "rampe du soir (r)": round(float(np.corrcoef(rampe.index, rampe.values)[0, 1]), 3),
+            "témoin consommation (r)": round(float(np.corrcoef(conso.index, conso.values)[0, 1]), 3),
+        })
+    return pd.DataFrame(lignes)
+
+
+def sensibilite_rampe(trame: pd.DataFrame) -> pd.DataFrame:
+    """Le verdict de H4 tient-il quand on fait varier la fenêtre du soir ?
+
+    Règle de méthode du projet : une mesure qui dépend de bornes choisies à la
+    main doit voir ses bornes varier avant publication.
+    """
+    lignes = []
+    for bornes in [(16, 21), (17, 22), (15, 21), (16, 22), (17, 21), (18, 22), (14, 23)]:
+        serie = rampe_du_soir(trame, bornes)
+        lignes.append({
+            "fenêtre du soir": f"{bornes[0]} h à {bornes[1]} h",
+            "r": round(float(np.corrcoef(serie.index, serie.values)[0, 1]), 3),
+        })
+    return pd.DataFrame(lignes)
+
+
 def creneaux_par_jour(donnees: pd.DataFrame) -> pd.DataFrame:
     """Nombre de créneaux par journée et par région, pour vérifier les bascules d'heure.
 

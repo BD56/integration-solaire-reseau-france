@@ -45,36 +45,31 @@ except NameError:
     RACINE = Path.cwd()
 sys.path.insert(0, str(RACINE))
 
-from src.analyses import annees_incompletes  # noqa: E402
+from src.analyses import (  # noqa: E402
+    MI_JOURNEE,
+    NUIT,
+    SEUIL_REJETE,
+    SEUIL_VALIDE,
+    SOIREE,
+    annees_incompletes,
+    moyenne_entre,
+    profil_horaire_par_annee,
+    rampe_du_soir,
+    trame_nationale,
+)
 from src.preparation import charger_donnees  # noqa: E402
-
-SEUIL_VALIDE, SEUIL_REJETE = 0.7, 0.3
-MI_JOURNEE, NUIT, SOIREE = (11, 15), (2, 5), (16, 21)
 
 df = charger_donnees()
 df = df[~df["annee"].isin(annees_incompletes(df))]
 
-COLONNES = ["solaire", "consommation", "demande_nette", "pompage",
-            "ech_physiques", "nucleaire", "hydraulique", "thermique"]
-CLES = ["date_heure", "date", "annee", "heure_decimale"]
-national = df.groupby(CLES, as_index=False)[COLONNES].sum()
-
-# `sum()` de pandas ignore les NaN : un créneau où une région manque est sommé
-# sur 11 régions et non 12, ce qui fabrique un creux artificiel de plusieurs
-# gigawatts. Cela concerne les 96 lignes de 2013 sans éolien (deux journées,
-# Centre-Val de Loire et Île-de-France), dont 22 tombent dans la fenêtre du soir.
-#
-# ⚠️ Le remède doit être appliqué COLONNE PAR COLONNE. Un `min_count=12` global
-# effacerait `pompage` et `nucleaire` sur toute la période antérieure à 2021, où
-# une case vide ne signifie pas « mesure manquante » mais « pas de centrale dans
-# cette région ». Seule `demande_nette` est concernée, l'éolien y entrant.
-complet = df.groupby(CLES)["demande_nette"].count() == df["libelle_region"].nunique()
-national = national.merge(complet.rename("douze_regions").reset_index(), on=CLES)
-national.loc[~national["douze_regions"], "demande_nette"] = np.nan
-print(f"  {(~national['douze_regions']).sum()} pas de temps écartés de la demande "
-      "nette nationale (moins de 12 régions renseignées).")
+# La somme des 12 régions, avec la correction des créneaux incomplets, est
+# dans `src/analyses.py` pour que le tableau de bord affiche exactement les
+# mêmes chiffres que ce script.
+national = trame_nationale(df)
 print(f"{len(national):,} pas de temps nationaux, "
       f"{national['annee'].min()} à {national['annee'].max()}".replace(",", " "))
+print(f"  {(~national['douze_regions']).sum()} pas de temps écartés de la demande "
+      "nette nationale (moins de 12 régions renseignées).")
 
 
 def verdict(annees, valeurs, sens_attendu: int, libelle: str) -> dict:
@@ -94,15 +89,12 @@ def verdict(annees, valeurs, sens_attendu: int, libelle: str) -> dict:
 
 
 def moyenne_par_heure(colonne: str) -> pd.DataFrame:
-    """Profil horaire moyen, une ligne par année."""
-    return national.pivot_table(index="annee", columns="heure_decimale",
-                                values=colonne, aggfunc="mean")
+    """Profil horaire moyen de la trame nationale, une ligne par année."""
+    return profil_horaire_par_annee(national, colonne)
 
 
-def entre(profil: pd.DataFrame, bornes: tuple) -> pd.Series:
-    """Moyenne du profil sur une plage horaire."""
-    colonnes = [h for h in profil.columns if bornes[0] <= h <= bornes[1]]
-    return profil[colonnes].mean(axis=1)
+# Moyenne d'un profil sur une plage horaire, définie dans `src/analyses.py`.
+entre = moyenne_entre
 
 
 # %% H1 : le pompage s'est-il déplacé de la nuit vers la mi-journée ?
@@ -196,17 +188,6 @@ h3 = verdict(rapport.index, rapport.values, -1,
 # Le verdict en dépendait entièrement : r = −0,453 (rejetée, et de sens
 # contraire) devient r = +0,892 (VALIDÉE). Borner le `.diff()` à la journée est
 # la correction.
-
-
-def rampe_du_soir(trame: pd.DataFrame, bornes=SOIREE, colonne="demande_nette") -> pd.Series:
-    """Variation maximale par demi-heure en soirée, médiane par année.
-
-    Le `.diff()` est calculé **par journée** (`groupby("date")`), sans quoi il
-    enjambe la nuit et compare deux jours différents.
-    """
-    fenetre = trame[trame["heure_decimale"].between(*bornes)].sort_values("date_heure").copy()
-    fenetre["variation"] = fenetre.groupby("date", observed=True)[colonne].diff()
-    return fenetre.groupby(["annee", "date"])["variation"].max().groupby("annee").median()
 
 
 rampe = rampe_du_soir(national)

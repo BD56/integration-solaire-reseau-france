@@ -197,6 +197,74 @@ def _transparence(couleur_hex: str, alpha: float) -> str:
     return f"rgba({r},{v},{b},{alpha})"
 
 
+def profil_horaire_annees(
+    pivot: pd.DataFrame, titre: str, unite: str = "MW", valeur_absolue: bool = False
+) -> go.Figure:
+    """Profil horaire, une courbe par année, à partir d'un tableau croisé.
+
+    Attend le format rendu par `analyses.profil_horaire_par_annee` : les années
+    en index, les demi-heures en colonnes. Même rampe séquentielle que
+    `profils_par_annee`, l'année étant une grandeur ordonnée.
+
+    `valeur_absolue` sert au pompage, compté négativement dans la source parce
+    qu'il consomme : on le retourne pour que « plus haut » veuille dire « on
+    pompe davantage », ce qui est plus lisible.
+    """
+    table = pivot.abs() if valeur_absolue else pivot
+    annees = list(table.index)
+    figure = go.Figure()
+    for rang, annee in enumerate(annees):
+        part = rang / max(len(annees) - 1, 1)
+        figure.add_trace(go.Scatter(
+            x=list(table.columns), y=table.loc[annee].to_numpy(),
+            mode="lines", name=str(annee),
+            line=dict(color=_teinte_sequentielle(part), width=2),
+            hovertemplate=f"<b>{annee}</b><br>%{{x:.1f}} h<br>"
+                          f"<b>%{{y:.0f}} {unite}</b><extra></extra>",
+        ))
+    figure.update_layout(
+        title=dict(text=titre, font=dict(color=ENCRE, size=15)),
+        height=420,
+        legend=dict(title="", orientation="v", x=1.01, y=1, font=dict(size=11)),
+        **MISE_EN_PAGE,
+    )
+    _axes_journee(figure, unite)
+    return figure
+
+
+def indicateur_annuel(
+    serie: pd.Series, titre: str, unite: str = "", reference: float | None = None
+) -> go.Figure:
+    """Évolution d'un indicateur année par année, avec un repère facultatif.
+
+    `reference` trace une ligne horizontale de lecture : par exemple 1 pour un
+    rapport mi-journée sur nuit, où le franchissement est l'événement.
+    """
+    figure = go.Figure()
+    figure.add_trace(go.Scatter(
+        x=list(serie.index), y=serie.to_numpy(), mode="lines+markers",
+        line=dict(color="#2a78d6", width=2.5), marker=dict(size=7),
+        hovertemplate="<b>%{x}</b><br>%{y:.3f} " + unite + "<extra></extra>",
+        name=titre,
+    ))
+    if reference is not None:
+        figure.add_hline(
+            y=reference, line=dict(color=ENCRE_SECONDAIRE, width=1, dash="dot"),
+            annotation_text=f"référence {reference:g}".replace(".", ","),
+            annotation_position="top left",
+            annotation_font=dict(color=ENCRE_SECONDAIRE, size=11),
+        )
+    figure.update_layout(
+        title=dict(text=titre, font=dict(color=ENCRE, size=15)),
+        height=340, showlegend=False, **MISE_EN_PAGE,
+    )
+    figure.update_xaxes(title_text="Année", showgrid=False, linecolor=GRILLE,
+                        ticks="outside", tickcolor=GRILLE)
+    figure.update_yaxes(title_text=unite, gridcolor=GRILLE, zeroline=False,
+                        linecolor=GRILLE)
+    return figure
+
+
 def _teinte_sequentielle(part: float) -> str:
     """Interpole la rampe ambre pour une position entre 0 (clair) et 1 (foncé)."""
     etapes = [(0.0, (247, 223, 160)), (0.55, (237, 161, 0)), (1.0, (94, 62, 0))]

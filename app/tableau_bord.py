@@ -21,6 +21,8 @@ RACINE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RACINE))
 
 from src.analyses import (  # noqa: E402
+    MI_JOURNEE,
+    NUIT,
     SANS_AGREGATION_NATIONALE,
     agreger_national,
     annees_incompletes,
@@ -28,19 +30,28 @@ from src.analyses import (  # noqa: E402
     creneaux_par_jour,
     grille_horaire,
     impact_negatifs,
+    moyenne_entre,
     part_reconstruite,
+    profil_horaire_par_annee,
     profils_par_annee,
     profils_saisonniers,
     profondeur_creux,
+    rampe_du_soir,
+    sensibilite_rampe,
+    temoin_saisonnier,
+    trame_nationale,
     valeurs_impossibles,
     valeurs_negatives,
+    verdicts_equilibrage,
 )
 from src.graphiques import (  # noqa: E402
     carte_chaleur,
     courbes_profil,
+    indicateur_annuel,
     normaliser,
     plafond_couleur,
     plage_commune,
+    profil_horaire_annees,
 )
 from src.graphiques import profils_par_annee as figure_par_annee  # noqa: E402
 from src.preparation import SAISONS, charger_donnees  # noqa: E402
@@ -87,7 +98,7 @@ st.sidebar.title("☀️ Solaire et réseau")
 st.sidebar.caption("Données RTE / Enedis via ODRE, pas de 30 minutes, 2013 à 2026.")
 page = st.sidebar.radio(
     "Page",
-    ["Cartes de chaleur", "Profils saisonniers", "Qualité des données"],
+    ["Cartes de chaleur", "Profils saisonniers", "Équilibrage", "Qualité des données"],
     label_visibility="collapsed",
 )
 
@@ -152,7 +163,7 @@ if page == "Cartes de chaleur":
         grille = grille_de(region)
         st.plotly_chart(
             carte_chaleur(grille, f"{libelle}, {region}", unite),
-            use_container_width=True,
+            width="stretch",
         )
         cases = grille.size
     else:
@@ -191,12 +202,12 @@ if page == "Cartes de chaleur":
         with gauche:
             st.plotly_chart(
                 carte_chaleur(grille_a, region_a, unite_affichee, plafond_a, hauteur=420),
-                use_container_width=True,
+                width="stretch",
             )
         with droite:
             st.plotly_chart(
                 carte_chaleur(grille_b, region_b, unite_affichee, plafond_b, hauteur=420),
-                use_container_width=True,
+                width="stretch",
             )
 
     note = (
@@ -284,7 +295,7 @@ elif page == "Profils saisonniers":
             with colonnes[indice % 2]:
                 st.plotly_chart(
                     courbes_profil(profils, saison, plage_y=echelle_commune),
-                    use_container_width=True,
+                    width="stretch",
                     key=f"profil_{saison}",
                 )
         st.caption(
@@ -315,7 +326,7 @@ elif page == "Profils saisonniers":
         par_annee = profils_par_annee(base_annees, variable)
         st.plotly_chart(
             figure_par_annee(par_annee, f"{libelle_var}, {region}"),
-            use_container_width=True,
+            width="stretch",
         )
 
         if incompletes and not ecarter:
@@ -363,13 +374,185 @@ elif page == "Profils saisonniers":
                 "pic_soir": "pic du soir", "nuit": "niveau de nuit",
                 "remontee": "remontée du soir", "creusement": "creusement à midi",
             }),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
         st.caption(
             "Creux mesuré entre 10 h et 16 h, pic du soir entre 18 h et 21 h, "
             "niveau de nuit entre 2 h et 5 h. Le creusement est l'écart entre la "
             "nuit et le creux de mi-journée."
         )
+
+# ----------------------------------------------------------------------------
+elif page == "Équilibrage":
+    st.title("Comment le système absorbe le solaire")
+    st.caption(
+        "Le solaire crée un surplus à midi, puis disparaît le soir. "
+        "Que fait le reste du système pour absorber l'un et compenser l'autre ?"
+    )
+
+    trame = trame_nationale(df[~df["annee"].isin(annees_incompletes(df))])
+
+    st.subheader("Quatre hypothèses, leurs critères écrits avant tout calcul")
+    verdicts = verdicts_equilibrage(trame)
+    couleurs = {"validée": "✅", "rejetée": "❌", "indécise": "➖"}
+    st.dataframe(
+        verdicts.assign(etat=verdicts["etat"].map(lambda e: f"{couleurs.get(e, '')} {e}"))
+        .rename(columns={"hypothese": "hypothèse", "etat": "verdict"}),
+        width="stretch", hide_index=True,
+    )
+    st.caption(
+        "Critère commun, fixé à l'avance : validée si |r| > 0,7 dans le sens "
+        "prédit, rejetée si |r| < 0,3 ou si le sens est contraire. "
+        "**L'hypothèse rejetée est conservée** : un rejet est un résultat, et "
+        "n'afficher que ce qui marche reviendrait à choisir ses preuves."
+    )
+
+    onglet_stockage, onglet_nucleaire, onglet_soir = st.tabs(
+        ["Le stockage change d'heure", "Le nucléaire module", "La remontée du soir"]
+    )
+
+    # ------------------------------------------------------------------
+    with onglet_stockage:
+        pompage = profil_horaire_par_annee(trame, "pompage")
+        st.plotly_chart(
+            profil_horaire_annees(
+                pompage, "Pompage au fil de la journée, par année",
+                "MW", valeur_absolue=True,
+            ),
+            width="stretch",
+        )
+        st.caption(
+            "Le pompage est compté négativement dans la source, puisqu'il "
+            "consomme : la courbe est retournée, donc **plus haut signifie que "
+            "l'on pompe davantage**. Les années claires sont les plus anciennes."
+        )
+        midi = moyenne_entre(pompage.abs(), MI_JOURNEE)
+        nuit = moyenne_entre(pompage.abs(), NUIT)
+        premiere, derniere = midi.index[0], midi.index[-1]
+        colonne_a, colonne_b, colonne_c = st.columns(3)
+        colonne_a.metric(
+            "Pompage de mi-journée",
+            f"{nombre(midi.loc[derniere])} MW",
+            f"×{midi.loc[derniere] / midi.loc[premiere]:.1f}".replace(".", ","),
+        )
+        colonne_b.metric(
+            "Pompage de nuit",
+            f"{nombre(nuit.loc[derniere])} MW",
+            f"{nombre(nuit.loc[derniere] - nuit.loc[premiere])} MW",
+        )
+        colonne_c.metric("Heure du maximum", f"{pompage.abs().loc[derniere].idxmax():.0f} h",
+                         "4 h 30 auparavant", delta_color="off")
+
+        st.markdown(
+            "On stockait la nuit, avec le surplus nucléaire. On stocke "
+            "désormais **aussi à midi**, avec le surplus solaire. L'heure du "
+            "maximum, à 4 h 30 dix années sur douze, bascule à **15 h en 2025**."
+        )
+        croisement = midi[midi > nuit]
+        if not croisement.empty:
+            st.markdown(
+                f"**{croisement.index[0]} est la première année où l'on pompe "
+                f"davantage à midi ({nombre(midi.loc[croisement.index[0]])} MW) "
+                f"que la nuit ({nombre(nuit.loc[croisement.index[0]])} MW).** "
+                "Les deux courbes se croisent, ce n'est plus seulement une "
+                "tendance."
+            )
+        st.warning(
+            "**Réserve à lire avec ce résultat.** Le basculement de l'heure du "
+            "maximum repose sur la seule année **2025**, classée `Données "
+            "consolidées` donc encore révisable. Et le déplacement se produit "
+            "**aussi en hiver**, où le solaire ne peut presque rien : c'est "
+            "l'hypothèse validée dont l'attribution au solaire est la **moins** "
+            "établie. Voir le témoin saisonnier plus bas.",
+            icon="⚠️",
+        )
+
+    # ------------------------------------------------------------------
+    with onglet_nucleaire:
+        nucleaire = profil_horaire_par_annee(trame, "nucleaire")
+        rapport = (moyenne_entre(nucleaire, MI_JOURNEE)
+                   / moyenne_entre(nucleaire, NUIT))
+        gauche, droite = st.columns([3, 2])
+        with gauche:
+            st.plotly_chart(
+                profil_horaire_annees(nucleaire, "Nucléaire au fil de la journée", "MW"),
+                width="stretch",
+            )
+        with droite:
+            st.plotly_chart(
+                indicateur_annuel(
+                    rapport, "Rapport mi-journée sur nuit", "", reference=1.0
+                ),
+                width="stretch",
+            )
+        st.markdown(
+            "Au-dessus de 1, le nucléaire produit **plus** à midi que la nuit, "
+            "ce qui est le comportement d'une production de base qui suit la "
+            "consommation. En dessous, il **s'efface devant le solaire**. Le "
+            "franchissement a lieu en 2024."
+        )
+        st.success(
+            "C'est l'hypothèse la mieux étayée : elle passe le témoin "
+            "saisonnier, c'est-à-dire que le nucléaire ne module **qu'en été**, "
+            "là où le solaire agit, et pas en hiver.",
+            icon="✅",
+        )
+
+    # ------------------------------------------------------------------
+    with onglet_soir:
+        st.plotly_chart(
+            indicateur_annuel(
+                rampe_du_soir(trame),
+                "Variation maximale de demande nette en soirée, médiane par année",
+                "MW par demi-heure",
+            ),
+            width="stretch",
+        )
+        st.markdown(
+            "Quand le solaire s'efface en fin de journée, le reste du système "
+            "doit remonter, et il doit le faire **de plus en plus vite** : de "
+            "2 075 MW par demi-heure en 2013 à **2 674 MW en 2025**."
+        )
+        st.error(
+            "**Ce résultat a d'abord été publié à l'envers.** Un calcul de "
+            "variation enjambait la nuit et comparait deux journées "
+            "différentes, ce qui donnait r = −0,45 et faisait conclure que la "
+            "remontée ne s'accélérait pas. Corrigé, r vaut **+0,89**. L'erreur "
+            "et sa correction sont consignées au journal du projet.",
+            icon="🔧",
+        )
+
+        st.subheader("Sensibilité aux bornes")
+        st.caption(
+            "Une mesure qui dépend d'une fenêtre choisie à la main doit voir "
+            "cette fenêtre varier avant d'être publiée."
+        )
+        st.dataframe(sensibilite_rampe(trame), width="stretch", hide_index=True)
+        st.info(
+            "Cinq fenêtres sur sept donnent exactement le même résultat et une "
+            "le renforce, mais **la plus large change de signe**. Le résultat "
+            "est solide sur la soirée proprement dite, il ne l'est pas si l'on "
+            "étend la fenêtre jusqu'au creux de mi-journée.",
+            icon="ℹ️",
+        )
+
+    st.divider()
+    st.subheader("Le témoin qui départage : est-ce vraiment le solaire ?")
+    st.caption(
+        "Les verdicts ci-dessus sont des corrélations contre l'année sur treize "
+        "points : ils établissent une régularité, pas une cause. Ce témoin, lui, "
+        "n'est pas une corrélation contre l'année. Si le solaire est bien la "
+        "cause, l'effet doit être **fort en été et faible en hiver**."
+    )
+    st.dataframe(temoin_saisonnier(trame), width="stretch", hide_index=True)
+    st.markdown(
+        "**Lecture.** Le nucléaire passe le test nettement : il ne module qu'en "
+        "été. La remontée du soir aussi : elle accélère en été, tandis qu'en "
+        "hiver demande nette et consommation évoluent de concert, donc sans "
+        "effet propre du solaire. **Le pompage ne le passe pas** : il se déplace "
+        "presque autant en hiver, ce qui suggère qu'une autre cause y contribue "
+        "(évolution des prix de marché, gestion du parc hydraulique)."
+    )
 
 # ----------------------------------------------------------------------------
 elif page == "Qualité des données":
@@ -412,7 +595,7 @@ elif page == "Qualité des données":
             remplissage.style.format("{:.1f}").background_gradient(
                 cmap="RdYlGn", vmin=0, vmax=100, axis=None
             ),
-            use_container_width=True,
+            width="stretch",
         )
 
         gauche, droite = st.columns(2)
@@ -457,7 +640,7 @@ elif page == "Qualité des données":
                 "part_%": "part (%)", "minimum": "minimum (MW)",
                 "mediane_negatifs": "médiane des négatifs (MW)",
             }),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
         st.info(
             "Le solaire négatif est à **99,8 % en Nouvelle-Aquitaine**, entre "
@@ -486,7 +669,7 @@ elif page == "Qualité des données":
                     "part_%": "part (%)", "maximum_%": "maximum (%)",
                     "regions_concernees": "régions concernées",
                 }),
-                use_container_width=True, hide_index=True,
+                width="stretch", hide_index=True,
             )
             st.warning(
                 "L'ampleur varie énormément selon la filière : le solaire "
@@ -511,7 +694,7 @@ elif page == "Qualité des données":
                 "creneaux": "créneaux dans la journée",
                 "journees_x_regions": "journées × régions",
             }),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
         st.markdown(
             "**Mars** : les créneaux locaux 02:00 et 02:30 n'existent pas mais "
@@ -542,7 +725,7 @@ elif page == "Qualité des données":
             part_reconstruite(df).rename(columns={
                 "annee": "année", "part_reconstruite_%": "part reconstruite (%)",
             }),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
         st.caption(
             "La colonne `tco_reconstruit` marque ces lignes dans les données, "
