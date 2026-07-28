@@ -6,6 +6,44 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 (suite 6) : source météo récupérée, et deux constats à connaître avant le test
+
+Étape 2 du protocole (entrée précédente). Code dans `src/meteo.py`. **Aucun résultat de validation ici**, uniquement la source et ce qu'elle apprend sur elle-même.
+
+### 1. Ce qui est en place
+
+`src/meteo.py` télécharge la réanalyse **ERA5** via l'API d'archive Open-Meteo, pour les douze centres régionaux, du 2012-12-30 au 2026-05-01 au pas horaire en UTC : **1 402 848 lignes**, 10 Mo, écrites dans `data/meteo_regions.parquet` (non versionné, régénérable en une commande).
+
+Variables : `shortwave_radiation` (irradiance globale, la seule qui compte pour la validation), `direct_radiation`, `diffuse_radiation`, `cloud_cover`, `temperature_2m` (réservée à la phase 2).
+
+Chaque point est mis en cache séparément dans `data/meteo_cache/`, l'API gratuite renvoyant un code 429 quand le quota par minute est dépassé. Une reprise automatique et une pause entre appels ont été ajoutées après un premier échec à mi-parcours.
+
+`scipy` a été ajouté aux dépendances : il est requis pour la corrélation de Spearman, qui est le critère du volet A.
+
+### 2. Constat 1 : le modèle par défaut de l'API n'est pas documenté, et il change les valeurs
+
+Une requête sans préciser `models` rend un nœud de grille différent de `models=era5`, et **des valeurs différentes**. Mesuré sur Nouvelle-Aquitaine, année 2024, cumuls journaliers :
+
+| | |
+|---|---|
+| Corrélation de Spearman entre les deux | **0,977** |
+| Écart absolu médian | 221 Wh/m², soit **6,7 %** de la médiane |
+| Biais moyen | −1,1 % |
+
+→ **Décision : le modèle est épinglé à `models=era5`** dans `src/meteo.py`. Une référence de validation dont on ignore la provenance n'en est pas une, même si elle paraît plus fine. La grille est alors la grille régulière 0,25° d'ERA5, soit environ 28 km, et les écarts entre point demandé et nœud servi (de 3,7 à 13,7 km) deviennent interprétables, ce qu'ils n'étaient pas avec le défaut.
+
+### 3. Constat 2 : la variabilité spatiale plafonne ce que la validation peut atteindre
+
+Le chiffre de 0,977 ci-dessus est aussi une mesure de la **décorrélation spatiale de l'irradiance sur environ 11 km**. Deux séries issues de la même réanalyse, distantes de 11 km, ne s'accordent qu'à ce niveau en cumul journalier.
+
+→ Il serait donc absurde d'exiger d'un indice couvrant une **région entière** qu'il corrèle bien au-delà à l'irradiance d'un **point unique**. Ce constat est consigné **avant** le test, et il conforte a posteriori le seuil de 0,80 du volet A, qui reste nettement en dessous de ce plafond. Il ne sera pas mobilisé après coup pour excuser un échec : il ne dispense en rien du volet B, où l'indice doit battre `tch_solaire` sur exactement les mêmes données et donc sous le même plafond.
+
+### 4. Reste à faire
+
+Étape 3 : calculer l'indice de clarté et exécuter les volets A et B dans `notebooks/07_validation_indice.py`.
+
+---
+
 ## 2026-07-28 (suite 5) : protocole de validation de l'indice de ciel clair, écrit AVANT tout calcul
 
 > **Nature de cette entrée** : elle ne contient **aucun résultat**. Elle fixe le critère de validation avant que la moindre donnée météo soit téléchargée, en application de la règle inscrite dans `AGENTS.md` section 5 bis. Toute modification ultérieure de ce critère devra être datée et justifiée dans une entrée séparée, jamais par réécriture de celle-ci.
