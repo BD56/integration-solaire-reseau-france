@@ -704,13 +704,18 @@ elif page == "Qualité des données":
             "créneaux). Elle n'apparaît pas dans le tableau ci-dessus parce que "
             "le trou est du côté UTC, pas du côté des étiquettes locales."
         )
-        st.error(
-            "**À retenir avant tout modèle de série temporelle.** À cause du "
+        st.warning(
+            "**À traiter avant tout modèle de série temporelle.** À cause du "
             "trou d'octobre, la série UTC **n'est pas une grille régulière** : "
-            "on y observe un saut de 1 h 30 une fois par an et par région. Tout "
-            "traitement supposant un pas constant (décalages, autocorrélation, "
-            "modèle temporel) butera dessus. Sans effet sur les analyses par "
-            "profil, et sans effet sur le solaire, puisqu'il fait nuit.",
+            "un saut de 1 h 30 une fois par an et par région.\n\n"
+            "Ce n'est **pas une perte d'information** : le créneau absent est "
+            "nocturne, le solaire y vaut 0,07 MW et la consommation est à son "
+            "plancher. C'est un défaut d'**indexation** : reculer de 48 lignes "
+            "pour viser « la même heure hier » ramène 25 heures en arrière sur "
+            "les lignes qui suivent le trou.\n\n"
+            "Mesuré : **7 488 lignes sur 2 803 620 (0,267 %)**, erreur médiane "
+            "de 135 MW soit 3,33 % du niveau médian. Écarter les treize "
+            "journées concernées coûte 0,03 % des données.",
             icon="🚧",
         )
 

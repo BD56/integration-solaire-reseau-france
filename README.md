@@ -12,6 +12,33 @@ se déforme-t-elle au fil de la journée et des saisons, comment ce creux évolu
 à mesure que le parc solaire grandit, et comment le système s'adapte-t-il à cette
 intermittence ?
 
+## 🔎 Ce que ce projet montre, en quatre résultats
+
+**1. Le solaire a inversé l'ordre de la journée.** En Nouvelle-Aquitaine, le moment
+où le réseau travaille le moins n'est plus 4 h du matin mais **16 h**, et cela
+depuis **2019**. Le phénomène est ordonné par l'équipement solaire : les régions
+qui basculent dépassent toutes 6,3 % de couverture, celles qui ne basculent pas
+restent sous 5,1 %.
+
+**2. Le stockage a changé d'heure.** On pompait la nuit avec le surplus nucléaire.
+**2025 est la première année où l'on pompe davantage à midi (1 608 MW) que la nuit
+(1 450 MW)**, avec le surplus solaire.
+
+**3. Le nucléaire s'efface devant le solaire.** Le rapport entre sa production de
+mi-journée et celle de la nuit passe de 1,037 à 0,956 et **franchit 1 en 2024** :
+il ne suit plus la consommation, il laisse la place.
+
+**4. Le soir devient plus difficile.** Quand le solaire s'efface, le reste du
+système doit remonter de plus en plus vite : **2 075 MW par demi-heure en 2013,
+2 674 en 2025**. Trois témoins écartent l'électrification des usages comme
+explication, dont le plus net : la rampe de la consommation brute, elle, ralentit.
+
+> **Méthode.** Chaque hypothèse a son critère de validation **écrit avant le
+> calcul**, et les hypothèses rejetées sont conservées. Le travail a ensuite été
+> soumis à une **revue contradictoire** qui a fait tomber deux conclusions
+> publiées : elles sont corrigées, et l'erreur est documentée plutôt qu'effacée
+> (voir le [journal](docs/journal-projet.md), entrée du 2026-07-28).
+
 ## 📡 Données
 
 - **Source** : [Open Data Réseaux Énergies (ODRE)](https://opendata.reseaux-energies.fr), plateforme officielle de RTE, Enedis et GRDF.
@@ -211,6 +238,16 @@ mi-journée et nuit passe de 1,037 en 2013 à 0,956 en 2025, franchissant 1 en 2
 
 ## 📌 Statut
 
-🚧 En cours. Pipeline de données, exploration, tableau de bord et trois
-sous-questions traitées. Restent la dimension géographique (phase 2) et un
-éventuel volet de prévision, qui exigerait une source météorologique externe.
+✅ **Volet descriptif terminé.** Chaîne de données, nettoyage documenté, trois
+sous-questions traitées et contrôlées, tableau de bord à quatre pages, revue
+contradictoire passée.
+
+Une source météorologique externe (réanalyse ERA5, via `src/meteo.py`) a été
+intégrée et a servi à valider un indicateur maison contre une référence
+indépendante.
+
+🔜 **Pistes ouvertes, non engagées.** La dimension géographique, et un volet de
+prévision à J+1. Ce dernier est réalisable : l'archive des prévisions météo
+fournit la prévision **telle qu'elle était émise la veille**, ce qui écarte toute
+fuite de données. Sa limite est connue, elle ne remonte qu'à janvier 2024, soit
+environ deux cycles saisonniers utilisables.

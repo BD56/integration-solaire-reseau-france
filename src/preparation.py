@@ -67,16 +67,35 @@ données (2013 à 2025) × 12 régions × 2 créneaux.
 Ne pas confondre avec le compte de **mars**, qui vaut 336 : les bascules de mars
 sont au nombre de 14 (2013 à 2026), le jeu s'arrêtant fin avril 2026.
 
-⚠️ **À retenir pour un futur volet de modélisation ou de prévision.** À cause du
+⚠️ **À traiter pour un futur volet de modélisation ou de prévision.** À cause du
 trou d'octobre, la série UTC n'est **pas une grille régulière** : on y observe un
-saut de 1 h 30 une fois par an et par région. Tout traitement qui suppose un pas
-constant (décalages temporels, autocorrélation, modèle de série temporelle)
-butera dessus. C'est sans effet sur les analyses descriptives par profil, et sans
-effet sur le solaire (la production y vaut 0,07 MW en moyenne, il fait nuit).
-Si une grille régulière devient nécessaire, interpoler ces créneaux est
-acceptable (erreur médiane mesurée à 65 MW, soit 3,2 % du niveau nocturne)
-**à condition de marquer les lignes imputées par une colonne dédiée**, pour
-qu'aucune analyse ne confonde une valeur observée et une valeur reconstruite.
+saut de 1 h 30 une fois par an et par région.
+
+Ce que cela coûte, mesuré plutôt qu'estimé. Le problème n'est **pas** une perte
+d'information : le créneau absent est nocturne, le solaire y vaut 0,07 MW en
+moyenne, et la consommation y est à son plancher. Le problème est
+l'**indexation** : un décalage construit par position (reculer de 48 lignes pour
+viser « la même heure hier ») ramène 25 heures en arrière et non 24, sur les
+lignes qui suivent le trou.
+
+    lignes concernées        7 488 sur 2 803 620, soit 0,267 %
+    erreur de consommation   médiane 135 MW, moyenne 170 MW, maximum 1 381 MW
+                             soit 3,33 % du niveau médian
+
+Ce n'est donc pas bloquant, et l'appeler ainsi serait exagéré. C'est un piège
+silencieux, qui ne fait pas échouer un calcul mais le laisse dériver sans
+prévenir, et certaines bibliothèques de séries temporelles exigeront de toute
+façon un index à pas constant.
+
+Trois traitements possibles : **écarter** les treize journées concernées (le plus
+propre, coût 0,03 % des données), **raisonner en heure locale** où la grille est
+régulière, ou **interpoler** ces créneaux (erreur médiane mesurée à 65 MW, soit
+3,2 % du niveau nocturne) **à condition de marquer les lignes imputées par une
+colonne dédiée**, pour qu'aucune analyse ne confonde une valeur observée et une
+valeur reconstruite.
+
+La leçon générale dépasse ce trou précis : **vérifier la régularité d'une grille
+avant de la supposer**, plutôt que de mémoriser cette anomalie-ci.
 
 Note sur la colonne `nature`
 ----------------------------
