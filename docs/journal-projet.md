@@ -79,6 +79,14 @@ Deux tests successifs se sont révélés sans valeur : le test de saisonnalité,
 
 Le protocole a néanmoins joué son rôle en forçant l'échec à être constaté et consigné plutôt que contourné.
 
+**Deux réflexes à appliquer avant d'écrire une mesure maison.**
+
+*Chercher la méthode établie.* Pour tester une saisonnalité, il existe la **décomposition STL** (tendance, composante saisonnière, résidu), la **force de saisonnalité de Hyndman** (nombre entre 0 et 1, comparable d'une série à l'autre), l'**analyse spectrale** (pic à la fréquence annuelle, sans fenêtre à choisir) et le **test de Kruskal-Wallis** sur les mois (non paramétrique, avec une valeur-p au lieu d'un seuil inventé). Aucune n'avait été envisagée avant d'improviser une comparaison entre deux mois choisis à la main.
+
+⚠️ Réserve sur Kruskal-Wallis dans ce cas précis : avec 56 808 observations et un écart déjà visible à l'œil, la valeur-p serait écrasante et ne ferait que confirmer ce que personne ne conteste. Il ne distingue pas non plus une saisonnalité **légitime** d'un artefact. Sa place utile viendra plus tard, pour comparer la structure saisonnière de l'indice à celle d'une source météo externe.
+
+*Vérifier que le test peut échouer.* Question à se poser systématiquement : **le résultat découle-t-il de la définition des grandeurs comparées ?** Si oui, le test ne prouve rien. Une validation doit confronter à une référence **extérieure** à ce qu'elle valide. C'est cette question, posée par Bryan sous la forme « le plafond, sur quoi tu te bases ? », qui a fait tomber le diagnostic circulaire.
+
 ---
 
 ## 2026-07-28 (suite 3) : protocole de l'indice de ciel clair, écrit avant construction
