@@ -6,6 +6,59 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 (suite 2) : ressource ou parc ? La prédiction est validée
+
+Étape 1 de la phase 2. Code rejouable dans `notebooks/05_ressource_ou_parc.py`. Période 2020-2025, le taux de charge n'existant pas avant.
+
+### 1. Le résultat
+
+| | Écart entre la région la plus forte et la plus faible |
+|---|---|
+| Production | facteur **19,2** (de 31 à 586 MW) |
+| Parc installé | facteur **15,3** (de 254 à 3 877 MW) |
+| Facteur de charge | facteur **1,38** (de 12,0 % à 16,5 %) |
+
+Décomposition logarithmique de l'écart de production : **90 % le parc installé, 10 % la ressource**.
+
+**Prédiction enregistrée la veille** : production autour de 10, facteur de charge autour de 1,5. **Mesuré** : 19,2 et 1,38. L'écart de production était sous-estimé, mais le point central est **validé**.
+
+### 2. Correctif de méthode
+
+La première version décomposait l'écart additivement, `(1,38 − 1) / (19,2 − 1)`, et annonçait 2 % pour la ressource. C'était **faux** : la relation `production = parc × facteur de charge` est multiplicative, la décomposition doit donc passer par les logarithmes, où les facteurs s'additionnent. La bonne valeur est **10 %**, cinq fois plus que l'estimation erronée.
+
+### 3. Les deux classements
+
+| Rang | Par facteur de charge | Par production |
+|---|---|---|
+| 1 | Provence-Alpes-Côte d'Azur (16,5 %) | Nouvelle-Aquitaine (586 MW) |
+| 2 | Occitanie (15,3 %) | Occitanie (476 MW) |
+| 3 | Nouvelle-Aquitaine (15,2 %) | Provence-Alpes-Côte d'Azur (318 MW) |
+| 4 | Centre-Val de Loire (14,6 %) | Auvergne-Rhône-Alpes (271 MW) |
+| 5 | Bourgogne-Franche-Comté (14,5 %) | Grand Est (164 MW) |
+| 6 | Auvergne-Rhône-Alpes (14,2 %) | Pays de la Loire (141 MW) |
+| 7 | Pays de la Loire (13,8 %) | Centre-Val de Loire (116 MW) |
+| 8 | Grand Est (13,7 %) | Bourgogne-Franche-Comté (97 MW) |
+| 9 | Bretagne (13,2 %) | Bretagne (60 MW) |
+| 10 | Hauts-de-France (13,2 %) | Hauts-de-France (59 MW) |
+| 11 | Normandie (12,9 %) | Normandie (37 MW) |
+| 12 | Île-de-France (12,0 %) | Île-de-France (31 MW) |
+
+Écarts de rang notables : **Centre-Val de Loire** et **Bourgogne-Franche-Comté** perdent 3 places entre ressource et production (sous-équipées) ; le **Grand Est** en gagne 3 (sur-équipé) ; la **Provence-Alpes-Côte d'Azur**, la mieux ensoleillée du pays, n'est que 3ᵉ en production.
+
+### 4. Retour sur l'erreur du 2026-07-26
+
+Le classement donné alors « par ensoleillement », déduit de la production, était **moins faux que craint mais réel**. Les trois premières places du vrai classement sont bien Provence-Alpes-Côte d'Azur, Occitanie et Nouvelle-Aquitaine, aucun écart de rang ne dépasse 3, et les quatre dernières régions sont identiques dans les deux classements.
+
+Ce qui était faux, c'est l'**ampleur** : parler des « régions les moins ensoleillées » laissait entendre un écart considérable, alors que l'écart réel d'ensoleillement est de **1,38**, contre 19 pour la production.
+
+### 5. Réserves
+
+Le facteur de charge **approche** l'ensoleillement, il ne le mesure pas : écrêtement, orientation et inclinaison des panneaux, technologie et âge du parc (détail dans le [dictionnaire](dictionnaire_donnees.md)). L'écrêtement reste la réserve la plus gênante, son biais jouant dans le sens même qu'on cherche à mesurer.
+
+**Point ouvert** : ces chiffres n'ont pas encore été croisés avec une source externe.
+
+---
+
 ## 2026-07-28 (suite) : plan de la phase 2, et prédiction enregistrée avant mesure
 
 Aucun calcul lancé. Cette entrée fixe le plan et **enregistre une attente avant de la vérifier**, pour qu'elle ne puisse pas être réécrite après coup.
