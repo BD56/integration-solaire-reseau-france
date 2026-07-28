@@ -6,6 +6,75 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 (suite 5) : protocole de validation de l'indice de ciel clair, écrit AVANT tout calcul
+
+> **Nature de cette entrée** : elle ne contient **aucun résultat**. Elle fixe le critère de validation avant que la moindre donnée météo soit téléchargée, en application de la règle inscrite dans `AGENTS.md` section 5 bis. Toute modification ultérieure de ce critère devra être datée et justifiée dans une entrée séparée, jamais par réécriture de celle-ci.
+
+### 1. Pourquoi une source externe est indispensable
+
+Les trois tentatives de validation du 2026-07-28 ont échoué pour une raison commune : aucune ne confrontait l'indice à une référence **extérieure aux données de production RTE**. La deuxième était même circulaire, l'enveloppe étant un quantile des données qu'elle servait à juger.
+
+La source retenue est **Open-Meteo, archive de réanalyse ERA5** : irradiance solaire au sol, issue de mesures satellitaires et de modèles atmosphériques. Elle est gratuite, sans clé, et couvre l'intégralité de la période du jeu ODRE.
+
+**Elle n'a aucun lien avec la production électrique française.** Le test peut donc réellement échouer, ce qui est la condition minimale pour qu'il prouve quelque chose.
+
+### 2. La grandeur de référence : l'indice de clarté
+
+Méthode établie (Liu et Jordan, 1960), pas une mesure improvisée :
+
+```
+k_t = irradiance globale au sol / irradiance extraterrestre
+```
+
+Le dénominateur se calcule exactement depuis la géométrie solaire. La fonction `hauteur_solaire()` est déjà en place dans `src/analyses.py` et son contrôle est consigné : écart nul aux deux solstices, 0,41° à l'équinoxe.
+
+`k_t` et l'indice de ciel clair mesurent la même chose, l'atténuation du rayonnement par l'atmosphère, mais par deux chemins totalement indépendants.
+
+### 3. Le critère, en deux volets
+
+**Volet A, corrélation.** Corrélation de **Spearman** entre l'indice journalier et `k_t` journalier, calculée **par région**, sur **2021-2024** (période où le parc est important et les variables `tco_` / `tch_` disponibles).
+
+| Corrélation médiane sur les 12 régions | Verdict |
+|---|---|
+| **≥ 0,80** | **validé** |
+| 0,60 à 0,80 | partiellement validé, usage restreint et signalé |
+| **< 0,60** | **rejeté** |
+
+Ces bornes sont un **choix argumenté, pas une norme publiée**, et c'est dit ici pour qu'on ne le présente pas plus tard comme un seuil de référence. L'argument : les deux grandeurs mesurent le même phénomène, mais l'indice capte aussi ce qui réduit la production sans être un nuage (écrêtement, neige, pannes, maintenance) et ERA5 a une maille d'environ 30 km.
+
+**Volet B, utilité, et c'est le volet décisif.** L'indice doit **faire mieux qu'un concurrent trivial** : le facteur de charge `tch_solaire`, disponible depuis 2020 et qui ne demande aucun calcul.
+
+> Si la corrélation de l'indice à `k_t` **n'est pas supérieure** à celle de `tch_solaire` à `k_t`, l'enveloppe glissante n'apporte rien et **l'indice est abandonné** au profit de la mesure simple.
+
+Ce volet ne comporte aucun seuil arbitraire : le point de comparaison est fourni par les données elles-mêmes.
+
+### 4. Ce qui est acté comme limite AVANT de voir le résultat
+
+Ces réserves sont écrites maintenant précisément pour qu'elles ne puissent pas servir d'excuse rétrospective en cas d'échec.
+
+**Un point par région.** `CENTRES_REGIONS` associe une seule coordonnée à chaque région. Auvergne-Rhône-Alpes s'étend de la plaine de la Loire aux Alpes, Occitanie de l'Atlantique à la Méditerranée. Un désaccord pourra donc venir du point choisi et non de l'indice. Cette explication ne sera recevable que sous une condition, fixée ici : qu'elle soit **testée**, en refaisant le calcul avec plusieurs points par région, et non simplement invoquée.
+
+**ERA5 est une réanalyse, pas une observation.** Sa couverture nuageuse est modélisée. Elle est donc externe aux données RTE, ce qui suffit à lever la circularité, mais elle n'est pas un étalon parfait.
+
+**Appariement temporel.** ERA5 est horaire et en **UTC**. Les données RTE sont au pas de 30 minutes, `date_heure` en UTC mais la colonne `date` en heure locale. Le test principal se fait au **pas journalier** pour limiter le bruit et écarter le piège du changement d'heure. Un test horaire secondaire ne sera mené qu'après, sur les seuls créneaux exploitables.
+
+### 5. Décision conditionnelle, prise à l'avance
+
+Si Open-Meteo fournit directement une irradiance exploitable, **l'indice de ciel clair perd sa raison d'être initiale** : il avait été construit faute de source météo. Le volet B tranche donc une vraie question, et l'issue « on jette l'indice » est une issue **acceptable et prévue**, pas un échec du projet. Elle sera consignée comme telle.
+
+### 6. Ce que cette étape débloque ensuite
+
+La même source météo sert la phase 2 géographique. Le cadre a été fixé dans la note de réflexion du 2026-07-28 : l'irradiance doit être pondérée par la **puissance solaire installée**, la température par la **population** (le sujet étant le chauffage). Ce ne sont pas les mêmes cartes, utiliser la même pour les deux serait une erreur.
+
+### 7. Ordre des opérations
+
+1. ✅ Écrire ce protocole et le pousser (fait par cette entrée).
+2. Écrire le téléchargement Open-Meteo (`src/meteo.py`), 12 points, période complète.
+3. Calculer `k_t` et exécuter les volets A et B dans `notebooks/07_validation_indice.py`.
+4. Consigner le verdict, quel qu'il soit, y compris un rejet.
+
+---
+
 ## 2026-07-28 (suite 4) : indice de ciel clair construit, mais NON VALIDÉ
 
 > **État à retenir** : l'indice existe dans `src/analyses.py`, deux tests propres l'appuient, mais **aucune validation n'a abouti**. Ne pas s'en servir comme arbitre avant confrontation à une source météo externe. Détail en section 9.
