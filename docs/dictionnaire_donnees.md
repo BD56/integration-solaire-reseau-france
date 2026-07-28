@@ -105,6 +105,19 @@ de RTE.
 des écarts régionaux, pas de la quantifier précisément. Pour cela il faudra une
 source météorologique externe.
 
+**Étalon disponible pour vérifier ces calculs.** ODRE publie un jeu officiel de
+facteurs de charge régionaux annuels,
+[`fc-tc-regionaux-annuels-enr`](https://odre.opendatasoft.com/explore/dataset/fc-tc-regionaux-annuels-enr/),
+couvrant **2014 à 2024** et incluant la Corse, absente d'éCO2mix régional. Il va
+donc au-delà de la limite de 2020 du TCH.
+
+Comparaison menée sur 2020-2025 : **corrélation des valeurs r = 0,987**, écart de
+rang maximal de 2 places. En revanche les valeurs recalculées à partir d'éCO2mix
+dépassent l'officiel de **0,6 à 0,8 point de façon systématique**, par différence
+de définition : la moyenne des taux instantanés surestime le rapport de l'énergie
+annuelle à la puissance installée, le parc grandissant en cours d'année. Ce biais
+n'affecte ni le classement ni les rapports entre régions.
+
 ## 🧮 Colonnes calculées
 
 Ces colonnes ne viennent pas de la source : elles sont fabriquées par

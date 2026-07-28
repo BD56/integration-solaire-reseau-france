@@ -55,7 +55,38 @@ Ce qui était faux, c'est l'**ampleur** : parler des « régions les moins ensol
 
 Le facteur de charge **approche** l'ensoleillement, il ne le mesure pas : écrêtement, orientation et inclinaison des panneaux, technologie et âge du parc (détail dans le [dictionnaire](dictionnaire_donnees.md)). L'écrêtement reste la réserve la plus gênante, son biais jouant dans le sens même qu'on cherche à mesurer.
 
-**Point ouvert** : ces chiffres n'ont pas encore été croisés avec une source externe.
+### 6. Croisement avec une source externe : confirmé
+
+ODRE publie un jeu officiel de facteurs de charge régionaux, `fc-tc-regionaux-annuels-enr` (2014 à 2024, avec la Corse en plus). Comparaison sur 2020-2025 :
+
+| Rang | Région | Officiel | Calculé ici |
+|---|---|---|---|
+| 1 | Provence-Alpes-Côte d'Azur | **16,08 %** | 16,51 % |
+| 2 | Occitanie | 14,56 % | 15,27 % |
+| 3 | Nouvelle-Aquitaine | 14,50 % | 15,16 % |
+| 4 | Centre-Val de Loire | 13,54 % | 14,64 % |
+| 5 | Auvergne-Rhône-Alpes | 13,38 % | 14,21 % |
+| 5 | Bourgogne-Franche-Comté | 13,38 % | 14,55 % |
+| 7 | Pays de la Loire | 13,02 % | 13,84 % |
+| 8 | Grand Est | 12,60 % | 13,74 % |
+| 9 | Normandie | 12,16 % | 12,88 % |
+| 10 | Bretagne | 12,07 % | 13,24 % |
+| 11 | Hauts-de-France | 11,90 % | 13,22 % |
+| 12 | Île-de-France | **11,02 %** | 11,99 % |
+
+**Corrélation des valeurs : r = 0,987.** Corrélation des rangs : 0,976. Écart de rang maximal : **2 places**, et seulement entre Normandie, Bretagne et Hauts-de-France, que la source officielle sépare de 0,26 point, soit une quasi-égalité.
+
+**Ce que le croisement confirme :**
+
+- le **classement**, notamment que la Provence-Alpes-Côte d'Azur est la mieux ensoleillée alors qu'elle n'est que 3ᵉ en production ;
+- l'**ampleur de l'écart** : rapport max sur min de **1,46** officiellement, contre 1,38 ici. Avec le chiffre officiel, la décomposition devient **88 % le parc, 12 % la ressource**, au lieu de 90 et 10. La conclusion est inchangée ;
+- l'**écrêtement**, signalé comme réserve théorique, est un phénomène **documenté** : RTE l'invoque explicitement, aux côtés du mauvais ensoleillement, pour expliquer le facteur de charge historiquement bas de 2024 (13 %, contre 14,5 % en 2023 et en moyenne sur 2014-2023).
+
+**Biais systématique identifié.** Les valeurs calculées ici dépassent l'officiel de 0,6 à 0,8 point, régulièrement. Cause : une différence de définition. Le calcul local fait la **moyenne des taux de charge instantanés**, quand l'indicateur officiel rapporte l'**énergie annuelle à la puissance installée**. Le parc grandissant en cours d'année, la production des premiers mois est divisée par une capacité plus faible, ce qui gonfle la moyenne des ratios. Ce biais n'affecte ni le classement ni les rapports entre régions.
+
+Sources : [ODRE, facteurs de charge régionaux annuels](https://odre.opendatasoft.com/explore/dataset/fc-tc-regionaux-annuels-enr/), [RTE, bilan électrique 2024](https://analysesetdonnees.rte-france.com/bilan-electrique-2024/production).
+
+**Conséquence pour la suite** : ce jeu officiel constitue un **étalon** disponible pour valider d'autres calculs, et il couvre 2014 à 2024, donc au-delà de la limite de 2020 du taux de charge d'éCO2mix.
 
 ---
 
