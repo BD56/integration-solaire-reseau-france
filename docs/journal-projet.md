@@ -6,6 +6,72 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 (suite 7) : VERDICT, l'indice de ciel clair est REJETÉ
+
+> **État à retenir** : l'indice de ciel clair **n'apporte rien** face à une mesure triviale. Il est abandonné. Ce qui le remplace est meilleur et déjà en place : l'irradiance ERA5, via `src/meteo.py`. Le code de l'indice est conservé dans `src/analyses.py` comme trace, avec un avertissement, et ne doit pas servir.
+
+Étape 3 du protocole (suite 5), exécutée dans `notebooks/07_validation_indice.py`. **Le protocole n'a été ni modifié ni assoupli en cours de route.**
+
+### 1. La référence a été contrôlée avant de servir de juge
+
+Une référence qu'on n'a pas regardée n'en est pas une. L'indice de clarté k_t, calculé sur les douze points ERA5 :
+
+| Contrôle | Résultat | Lecture |
+|---|---|---|
+| Moyenne | 0,478 | conforme aux ordres de grandeur sous nos latitudes |
+| Étendue | 0,031 à 0,804 | aucune valeur aberrante, rien au-dessus de 0,80 |
+| Cycle mensuel | 0,371 en janvier, 0,543 en août | saisonnalité attendue |
+| Corrélation à la nébulosité déclarée | **−0,817** | k_t baisse bien quand les nuages montent |
+
+Couverture : **1 461 journées pour chacune des 12 régions**, soit 17 532 journées sur 2021-2024, sans aucun trou.
+
+### 2. Volet A : 0,763, donc entre les deux
+
+Corrélation de Spearman entre l'indice journalier et k_t, médiane sur les 12 régions : **0,763**. Cela tombe dans la bande « partiellement validé » (0,60 à 0,80) fixée d'avance. Ni rejet, ni validation, pour ce volet seul.
+
+Détail : de 0,633 en Occitanie à 0,811 en Normandie.
+
+### 3. Volet B, décisif : l'indice perd 12 fois sur 12
+
+| Mesure | Médiane sur 12 régions |
+|---|---|
+| Indice de ciel clair | 0,763 |
+| `tch_solaire`, journée entière | 0,721 |
+| **`tch_solaire`, mêmes créneaux** | **0,798** |
+
+L'indice bat le facteur de charge calculé sur la journée entière (10 régions sur 12). Mais comparé au **même facteur de charge restreint exactement aux créneaux où l'indice est lui-même défini**, donc à base strictement identique, il perd dans **12 régions sur 12**, sans une seule exception.
+
+➡️ **Verdict du protocole : l'enveloppe glissante n'apporte rien. L'indice est abandonné.** Cette issue était prévue et actée d'avance (suite 5, section 5), ce n'est pas un échec du projet.
+
+### 4. Une objection post hoc, testée et écartée
+
+Objection formulée **après** avoir vu le résultat, et signalée comme telle parce que c'est exactement la configuration qui, plus tôt le même jour, avait produit une requalification illégitime d'un test raté : k_t a un cycle saisonnier, `tch_solaire` en a un très marqué, et l'indice a été construit pour le supprimer. La corrélation annuelle récompenserait donc le concurrent pour une saisonnalité partagée.
+
+Critère écrit **avant** le calcul : l'indice devait l'emporter dans au moins **7 régions sur 12** avec des corrélations calculées **dans chaque mois**, saisonnalité neutralisée des deux côtés.
+
+**Résultat : 4 régions sur 12.** Médianes 0,798 pour l'indice contre 0,813 pour le concurrent.
+
+➡️ **Objection écartée, le rejet est confirmé.** Constat annexe : à saisonnalité neutralisée, les deux mesures deviennent quasi équivalentes (écarts de −0,033 à +0,016 selon la région). Toute la machinerie de l'enveloppe glissante n'achète rien du tout.
+
+### 5. Ce qu'il faut en retenir, au-delà de cet indice
+
+Deux tests propres restaient en faveur de l'indice : la cohérence spatiale (r = −0,945 entre distance et corrélation) et le comportement des journées extrêmes. **Ils n'étaient pas faux, ils étaient insuffisants.** Ils établissaient que l'indice suit un phénomène de grande échelle, jamais qu'il le suit **mieux qu'une mesure triviale**.
+
+➡️ Règle à ajouter à la discipline : **un test qu'on passe n'est pas un test qui départage.** Toute mesure élaborée doit être confrontée à la mesure paresseuse qu'elle prétend remplacer, faute de quoi on ne mesure que sa propre plausibilité.
+
+### 6. Ce qui remplace l'indice, et ce que ça débloque
+
+`shortwave_radiation` d'ERA5 via `src/meteo.py`, avec `irradiance_extraterrestre()` pour former k_t. Externe aux données de production, donc **utilisable comme variable explicative**, ce que l'indice ne pouvait pas être (il était circulaire pour l'explication, étant dérivé de la production).
+
+C'est un gain net : la limitation la plus lourde de l'indice disparaît avec lui.
+
+### 7. Reste ouvert
+
+- Les corrélations les plus faibles sont en **Occitanie** (0,633) et **Provence-Alpes-Côte d'Azur** (0,647), les deux régions les plus étendues et les plus contrastées. C'est cohérent avec la limite du point unique par région, actée au protocole. Le test multi-points prévu (suite 5, section 4) n'a pas été mené : il ne changerait pas le verdict, l'indice étant rejeté, mais il vaudra pour la phase 2 géographique.
+- L'écart d'autocorrélation relevé en suite 4 (0,533 contre 0,430) devient sans objet.
+
+---
+
 ## 2026-07-28 (suite 6) : source météo récupérée, et deux constats à connaître avant le test
 
 Étape 2 du protocole (entrée précédente). Code dans `src/meteo.py`. **Aucun résultat de validation ici**, uniquement la source et ce qu'elle apprend sur elle-même.

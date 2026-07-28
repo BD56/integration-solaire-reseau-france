@@ -219,3 +219,61 @@ print(f"  régions où l'indice fait mieux : {gagne}/12 (variante stricte : "
 verdict_b = "UTILE" if mediane_indice > max(mediane_tch, mediane_exploit) else "INUTILE"
 print(f"  -> {verdict_b}")
 print("=" * 70)
+
+# %% ANALYSE POST HOC, à intra-mois : statut à ne pas confondre avec ci-dessus
+# ---------------------------------------------------------------------------
+# ⚠️ Cette analyse a été décidée APRÈS avoir vu le résultat des volets A et B.
+# Elle ne les annule pas et ne les remplace pas. Elle est consignée comme post
+# hoc parce que c'est exactement la configuration qui, le 2026-07-28, avait
+# produit une requalification illégitime d'un test raté.
+#
+# L'objection qu'elle teste : k_t a un cycle saisonnier, `tch_solaire` en a un
+# très marqué, et l'indice a été construit pour le supprimer. Une corrélation
+# calculée sur l'année entière récompense donc le concurrent pour une
+# saisonnalité partagée et pénalise l'indice de l'avoir retirée.
+#
+# Critère écrit AVANT de lancer le calcul :
+#   - l'indice bat `tch_jour_exploitables` dans au moins 7 régions sur 12
+#     -> la mesure du volet B était confondue, à reconsidérer ;
+#   - sinon -> le rejet est confirmé, l'objection tombe.
+#
+# Ce que ce test NE peut PAS établir : la validité de l'indice. Elle reste
+# jugée par le volet A sur sa métrique d'origine.
+
+SEUIL_REGIONS = 7
+
+intra = []
+for (region, mois), part in table.groupby(
+    ["libelle_region", table["date"].dt.month], observed=True
+):
+    if len(part) < 30:
+        continue
+    intra.append({
+        "region": region,
+        "mois": mois,
+        "indice": part["indice"].corr(part["k_t"], method="spearman"),
+        "tch_exploit": part["tch_jour_exploitables"].corr(part["k_t"], method="spearman"),
+    })
+
+intra = pd.DataFrame(intra)
+par_region = intra.groupby("region")[["indice", "tch_exploit"]].mean()
+par_region["gain"] = par_region["indice"] - par_region["tch_exploit"]
+
+print("Corrélation à k_t DANS chaque mois, moyennée sur les 12 mois :")
+print(par_region.round(3).to_string())
+print()
+print("Par mois, moyenné sur les 12 régions :")
+print(intra.groupby("mois")[["indice", "tch_exploit"]].mean().round(3).to_string())
+
+victoires = int((par_region["gain"] > 0).sum())
+print()
+print("=" * 70)
+print(f"POST HOC : l'indice gagne dans {victoires}/12 régions "
+      f"(seuil fixé avant calcul : {SEUIL_REGIONS})")
+print(f"  médiane indice      : {par_region['indice'].median():.3f}")
+print(f"  médiane tch_exploit : {par_region['tch_exploit'].median():.3f}")
+if victoires >= SEUIL_REGIONS:
+    print("  -> la mesure du volet B était CONFONDUE par la saisonnalité")
+else:
+    print("  -> objection ÉCARTÉE, le rejet du volet B est confirmé")
+print("=" * 70)

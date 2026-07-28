@@ -287,22 +287,40 @@ def indice_ciel_clair(
     - `seuil_enveloppe` : en deçà, le rapport n'a pas de sens et diverge. Écarte
       les créneaux nocturnes.
 
-    ⚠️ **NON VALIDÉ à ce jour. Ne pas s'en servir comme arbitre.**
+    ⛔ **REJETÉ le 2026-07-28. Conservé comme trace, à ne pas utiliser.**
 
-    Trois tentatives de validation ont échoué sans qu'aucune ne teste réellement
-    l'enveloppe (journal du 2026-07-28, section 9) : la première confondait
-    saisonnalité géométrique et météorologique, la deuxième était **circulaire**
-    (l'enveloppe étant un quantile des mêmes données, environ 5 % des journées la
-    dépassent par construction), la troisième reposait sur une inclinaison de
-    panneaux supposée alors que le parc français est bimodal, moitié toitures et
-    moitié centrales au sol.
+    Confronté à l'irradiance ERA5, source extérieure aux données de production,
+    l'indice **n'apporte rien** par rapport au simple facteur de charge
+    `tch_solaire` calculé sur les mêmes créneaux (`notebooks/07_validation_indice.py`,
+    journal du 2026-07-28 suite 7). Corrélation de Spearman à l'indice de clarté
+    k_t, médiane sur les 12 régions, 2021-2024 :
 
-    Deux tests propres, indépendants de tout modèle, restent en sa faveur : la
-    cohérence spatiale (corrélation entre régions décroissant avec la distance,
-    r = −0,945) et le comportement des journées extrêmes.
+        indice de ciel clair            0,763
+        tch_solaire, mêmes créneaux     0,798   -> l'emporte dans 12 régions / 12
 
-    Sa validation exige une **source météorologique externe**. Tant qu'elle n'est
-    pas faite, cet indice ne doit pas servir à départager quoi que ce soit.
+    Une analyse post hoc à saisonnalité neutralisée (corrélations calculées dans
+    chaque mois) n'a pas rétabli l'indice : il ne l'emporte que dans 4 régions
+    sur 12, sous le seuil de 7 fixé avant le calcul. Les deux mesures deviennent
+    d'ailleurs quasi équivalentes (0,798 contre 0,813), ce qui montre que toute
+    la machinerie de l'enveloppe glissante n'achète rien.
+
+    ➡️ **Ce qu'il faut employer à la place** : `shortwave_radiation` d'ERA5, via
+    `src.meteo`, et `irradiance_extraterrestre()` pour former k_t. C'est une
+    mesure externe, sans circularité, et meilleure.
+
+    Trois tentatives de validation antérieures avaient échoué sans qu'aucune ne
+    teste réellement l'enveloppe (journal du 2026-07-28, section 9) : la première
+    confondait saisonnalité géométrique et météorologique, la deuxième était
+    **circulaire** (l'enveloppe étant un quantile des mêmes données, environ 5 %
+    des journées la dépassent par construction), la troisième reposait sur une
+    inclinaison de panneaux supposée alors que le parc français est bimodal.
+
+    Deux tests propres restaient en sa faveur : la cohérence spatiale (r = −0,945
+    entre distance et corrélation) et le comportement des journées extrêmes. Ils
+    n'étaient pas faux, ils étaient **insuffisants** : ils établissaient que
+    l'indice suit bien un phénomène de grande échelle, jamais qu'il le suit mieux
+    qu'une mesure triviale. C'est la leçon à retenir, un test qu'on passe n'est
+    pas un test qui départage.
 
     Limites, connues d'avance :
 

@@ -82,6 +82,8 @@ Ces règles viennent d'échecs constatés, détaillés dans le [journal](docs/jo
 
 **Chercher la méthode établie avant d'improviser une mesure.** Pour une saisonnalité, il existe la décomposition STL, la force de saisonnalité de Hyndman, l'analyse spectrale, le test de Kruskal-Wallis. Trois mesures improvisées se sont révélées sans valeur au cours de ce projet.
 
+**Un test qu'on passe n'est pas un test qui départage.** Toute mesure élaborée doit être confrontée à la **mesure paresseuse qu'elle prétend remplacer**, sur exactement la même base. L'indice de ciel clair passait deux tests propres (cohérence spatiale, journées extrêmes) et a pourtant été rejeté : face au simple facteur de charge `tch_solaire`, il perdait dans 12 régions sur 12. Ces tests n'étaient pas faux, ils étaient insuffisants, car ils ne mesuraient que sa plausibilité.
+
 **Vérifier qu'un test peut échouer.** Question à poser systématiquement : *le résultat découle-t-il de la définition des grandeurs comparées ?* Si oui, le test ne prouve rien. Une validation doit confronter à une référence **extérieure** à ce qu'elle valide. C'est cette question qui a fait tomber le diagnostic circulaire de l'indice de ciel clair.
 
 **Se méfier des bornes choisies à la main.** Les faire varier avant de publier. La date du basculement de la demande nette passait de 2015 à 2021 selon les fenêtres horaires retenues, jusqu'à ce qu'une mesure sans paramètre la fixe.
