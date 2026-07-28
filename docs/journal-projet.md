@@ -6,6 +6,81 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 (suite 4) : indice construit, deux tests réussis, un test invalidé et deux diagnostics ratés
+
+Suite du protocole. Code dans `src/analyses.py` (`indice_ciel_clair`, `indice_journalier`, `hauteur_solaire`, `ciel_clair_theorique`) et `notebooks/06_indice_ciel_clair.py`. **Travail en cours, conclusion non atteinte.**
+
+### 1. Construction
+
+Réglages appliqués tels que figés la veille : fenêtre de 30 jours, quantile 0,95, maille créneau horaire × région, exclusion sous 10 MW d'enveloppe.
+
+**1 304 610 créneaux exploitables** sur 2 734 524, soit 47,7 %. **56 808 journées** couvertes. Indice journalier : moyenne 0,616, écart-type 0,265.
+
+⚠️ **Écart non expliqué** avec l'étude de faisabilité du 2026-07-25 : autocorrélation à J-1 de **0,533** ici contre **0,430** alors, et moyenne de 0,616 contre 0,717. Les deux constructions diffèrent sans qu'on sache encore en quoi. À élucider.
+
+### 2. Les trois tests
+
+**Test 2, cohérence spatiale : RÉUSSI, et nettement.** Corrélation entre distance et corrélation des indices : **r = −0,945** sur 66 paires. Hauts-de-France et Île-de-France (134 km) corrèlent à 0,831 ; Bretagne et Provence-Alpes-Côte d'Azur (853 km) à 0,281. L'indice suit donc un phénomène de grande échelle, spatialement cohérent, ce qui est la signature du ciel.
+
+**Test 3, journées extrêmes : RÉUSSI.** Journées les plus sombres entre 0,078 et 0,113, toutes en novembre ou décembre.
+
+**Test 1, neutralité saisonnière : ÉCHOUÉ.** Indice médian de 0,371 en décembre contre 0,795 en juin, soit un écart de **0,424** pour un seuil fixé à 0,15.
+
+### 3. Le test 1 était mal conçu, avec un défaut prouvé et un contesté
+
+**Défaut prouvé, et il n'excuse rien** : l'indice journalier moyenne un **nombre de créneaux qui dépend de la saison**, de **15,6 par jour en janvier à 28,4 en juillet**, soit un rapport de 1,8. Le test comparait donc des grandeurs différentes selon le mois, indépendamment de toute question d'enveloppe. Ce défaut aurait dû être vu à l'écriture du test, pas après.
+
+**Défaut contesté** : la prémisse. Le test attendait un indice sans cycle saisonnier, alors que la nébulosité est elle-même saisonnière et qu'un indice correct devrait donc en montrer un. Cette objection a été formulée **après avoir vu le résultat**, ce qui est exactement la rationalisation que le protocole devait empêcher. Elle reste donc **non tranchée**.
+
+### 4. Deux diagnostics ratés, dont un circulaire
+
+**Premier diagnostic proposé** : vérifier que les meilleures journées de chaque mois atteignent le plafond, l'indice devant alors approcher 1. Résultat obtenu : quantile 99 supérieur à 1 tous les mois, minimum 1,022 en novembre. Conclusion tirée sur le moment : enveloppe saine.
+
+⚠️ **Ce diagnostic était CIRCULAIRE**, et Bryan l'a fait tomber en demandant simplement sur quoi reposait le « plafond ». L'enveloppe étant définie comme le quantile 0,95 d'une fenêtre **contenant la journée évaluée**, environ 5 % des journées la dépassent **par construction**. Le résultat était donc garanti d'avance, quelle que soit la qualité de l'enveloppe. Le test vérifiait une propriété de sa propre définition.
+
+**Conclusions retirées** : « enveloppe saine » et « le cycle saisonnier est météorologique ». Toutes deux reposaient sur ce raisonnement circulaire.
+
+**Restent debout** : le défaut d'agrégation (mesuré indépendamment) et les tests 2 et 3.
+
+### 5. Le test astronomique, valide mais non concluant
+
+Pour sortir de la circularité, il faut confronter l'enveloppe à une référence **extérieure aux données de production**. L'astronomie convient, et n'est pas une source météorologique : la position du soleil se calcule exactement depuis la date, l'heure UTC et la latitude.
+
+Ajout de `hauteur_solaire()` et `ciel_clair_theorique()` (modèle de Haurwitz) dans `src/analyses.py`, avec le calcul mené **en heure UTC**, ce qui écarte d'emblée le piège du changement d'heure.
+
+**Contrôle du calcul** : la hauteur au midi solaire est retrouvée avec un **écart nul aux deux solstices** et de 0,41° à l'équinoxe, pour deux latitudes.
+
+**Résultat.** Le rapport entre l'enveloppe et le ciel clair théorique **n'est pas constant** dans l'année. Normalisé, en 2024 :
+
+| Mois | Nouvelle-Aquitaine | Hauts-de-France | Provence-Alpes-Côte d'Azur |
+|---|---|---|---|
+| Juin | 0,81 | 0,84 | 0,78 |
+| Décembre | **1,69** | **2,22** | **1,49** |
+
+L'enveloppe est donc relativement bien plus haute en hiver que ne le prévoit un modèle **horizontal**.
+
+**Interprétation proposée, non démontrée** : les panneaux sont **inclinés**, en général vers 30° au sud, et captent bien mieux le soleil bas d'hiver qu'une surface plate. Trois indices vont dans ce sens : la variation est lisse et monotone, son signe est celui attendu, et surtout son **amplitude est ordonnée par la latitude** (1,39 pour les Hauts-de-France à 49,9° N, 0,88 pour la Nouvelle-Aquitaine à 45,2° N, 0,74 pour la Provence à 43,9° N). Cet ordre est une signature physique qu'une défaillance aléatoire ne produirait pas.
+
+**Mais rien n'est prouvé** : on a montré que l'enveloppe ne suit pas le ciel clair **horizontal**, pas qu'elle suit le ciel clair **sur plan incliné**, qui est la vraie référence.
+
+### 6. Nouvelle limite constatée
+
+En janvier, l'indice atteint **3,751** au maximum, et son quantile 99 monte à 1,306. Une valeur de 3,75 est absurde. C'est le défaut **inverse** de celui redouté : dans un mois durablement couvert, l'enveloppe se cale sur la moins mauvaise des mauvaises journées, donc trop bas, et une éclaircie exceptionnelle fait exploser le rapport. L'enveloppe est donc **instable en hiver**, ce qui interdit de lire ses valeurs hivernales extrêmes au pied de la lettre.
+
+### 7. Prochaine étape
+
+Recalculer le ciel clair théorique **sur plan incliné à 30°** et refaire la comparaison. Si le rapport devient plat, l'enveloppe est saine et le cycle saisonnier de l'indice est météorologique. S'il reste déformé, l'enveloppe est mauvaise et l'indice inadapté.
+
+C'est le seul test proposé jusqu'ici qui puisse réellement invalider l'indice.
+
+### 8. Enseignement de méthode
+
+Deux tests successifs se sont révélés sans valeur : le test de saisonnalité, dont la prémisse confondait saisonnalité géométrique et météorologique, et le diagnostic d'enveloppe, circulaire par construction. Dans les deux cas la faute est la même : **une mesure improvisée au lieu d'une méthode établie**, déjà constatée avec les fenêtres horaires du basculement.
+
+Le protocole a néanmoins joué son rôle en forçant l'échec à être constaté et consigné plutôt que contourné.
+
+---
+
 ## 2026-07-28 (suite 3) : protocole de l'indice de ciel clair, écrit avant construction
 
 Aucun code écrit. Cette entrée fige les choix de construction **et** les critères de validation avant tout calcul, à la demande de Bryan.

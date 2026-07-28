@@ -7,6 +7,7 @@ bord, ce qui évite que les deux divergent.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from src.preparation import SAISONS
@@ -107,6 +108,153 @@ def profondeur_creux(donnees: pd.DataFrame, variable: str = "demande_nette") -> 
                        "nuit": nuit, "remontee": pic - creux,
                        "creusement": nuit - creux})
     return pd.DataFrame(lignes)
+
+
+#: Centres approximatifs des régions métropolitaines (latitude, longitude).
+CENTRES_REGIONS = {
+    "Auvergne-Rhône-Alpes": (45.4, 4.6),
+    "Bourgogne-Franche-Comté": (47.2, 4.8),
+    "Bretagne": (48.2, -2.9),
+    "Centre-Val de Loire": (47.5, 1.7),
+    "Grand Est": (48.7, 5.6),
+    "Hauts-de-France": (49.9, 2.7),
+    "Normandie": (49.1, 0.1),
+    "Nouvelle-Aquitaine": (45.2, 0.2),
+    "Occitanie": (43.7, 2.0),
+    "Pays de la Loire": (47.5, -0.8),
+    "Provence-Alpes-Côte d'Azur": (43.9, 6.1),
+    "Île-de-France": (48.7, 2.5),
+}
+
+
+def hauteur_solaire(
+    horodatage_utc: pd.Series, latitude: float, longitude: float
+) -> pd.Series:
+    """Sinus de la hauteur du soleil, calculé par pure géométrie.
+
+    Aucune donnée météorologique n'intervient : seuls la date, l'heure UTC et
+    les coordonnées comptent. Le résultat vaut 1 au zénith, 0 à l'horizon, et
+    devient négatif la nuit.
+
+    Le calcul part de l'heure **UTC** et non de l'heure locale, ce qui écarte
+    d'emblée le piège du changement d'heure : 13 h locale ne désigne pas la même
+    position du soleil en hiver et en été.
+    """
+    jour = horodatage_utc.dt.dayofyear
+    heure = horodatage_utc.dt.hour + horodatage_utc.dt.minute / 60
+
+    # Déclinaison du soleil, qui varie de -23,45 à +23,45 degrés dans l'année.
+    declinaison = np.radians(23.45 * np.sin(2 * np.pi * (284 + jour) / 365))
+
+    # Équation du temps : écart entre midi solaire et midi de l'horloge, en minutes.
+    angle_jour = 2 * np.pi * (jour - 81) / 364
+    equation_temps = (9.87 * np.sin(2 * angle_jour)
+                      - 7.53 * np.cos(angle_jour)
+                      - 1.5 * np.sin(angle_jour))
+
+    temps_solaire = heure + longitude / 15 + equation_temps / 60
+    angle_horaire = np.radians(15 * (temps_solaire - 12))
+
+    lat = np.radians(latitude)
+    return (np.sin(lat) * np.sin(declinaison)
+            + np.cos(lat) * np.cos(declinaison) * np.cos(angle_horaire))
+
+
+def ciel_clair_theorique(
+    horodatage_utc: pd.Series, latitude: float, longitude: float
+) -> pd.Series:
+    """Irradiance théorique par ciel parfaitement clair, en W/m².
+
+    Modèle de Haurwitz (1945), qui ne dépend que de la hauteur du soleil :
+
+        irradiance = 1098 × sin(hauteur) × exp(-0,059 / sin(hauteur))
+
+    Le terme exponentiel traduit l'épaisseur d'atmosphère traversée, plus grande
+    quand le soleil est bas. C'est une référence **purement géométrique**, sans
+    aucune mesure de nuage : exactement ce qu'il faut pour juger si l'enveloppe
+    empirique suit bien la course du soleil.
+    """
+    sinus = hauteur_solaire(horodatage_utc, latitude, longitude)
+    sinus_positif = sinus.where(sinus > 0.01)
+    return 1098 * sinus_positif * np.exp(-0.059 / sinus_positif)
+
+
+def indice_ciel_clair(
+    donnees: pd.DataFrame,
+    fenetre_jours: int = 30,
+    quantile: float = 0.95,
+    seuil_enveloppe: float = 10.0,
+) -> pd.DataFrame:
+    """Indicateur de nébulosité déduit de la production solaire seule.
+
+    La production dépend de trois choses : la course du soleil (déterministe),
+    la taille du parc (lente) et la couverture nuageuse (seule vraiment variable
+    au jour le jour). En estimant ce que le parc produirait **par ciel clair**,
+    le rapport isole la nébulosité :
+
+        indice = production observée / production par ciel clair
+
+    Proche de 1, le ciel était dégagé. Proche de 0,3, il était très couvert.
+
+    L'enveloppe de ciel clair est estimée **sans aucune donnée météorologique**,
+    par un quantile haut glissant calculé à créneau horaire fixé : sur trente
+    jours, il se trouve forcément quelques journées dégagées. La fenêtre étant
+    glissante, elle suit automatiquement la croissance du parc, ce qui rend les
+    années comparables entre elles.
+
+    Réglages figés avant construction (journal du 2026-07-28), à ne pas ajuster
+    au vu des résultats de validation, faute de quoi l'outil serait calé sur son
+    propre examen :
+
+    - `fenetre_jours` = 30 : assez long pour contenir des journées dégagées,
+      assez court pour suivre la course saisonnière du soleil ;
+    - `quantile` = 0,95 : approche le maximum atteignable sans se caler sur une
+      valeur aberrante isolée ;
+    - maille **créneau horaire × région** : la course du soleil et le parc
+      diffèrent selon l'heure et le lieu ;
+    - `seuil_enveloppe` : en deçà, le rapport n'a pas de sens et diverge. Écarte
+      les créneaux nocturnes.
+
+    Limites, connues d'avance :
+
+    - l'indice capte **tout ce qui réduit la production**, pas seulement les
+      nuages : écrêtement, neige, pannes, maintenance ;
+    - il est **circulaire pour l'explication**. Dérivé de la production, il ne
+      peut pas servir à l'expliquer. C'est un instrument de validation, jamais
+      une variable explicative.
+
+    Returns
+    -------
+    Les données d'entrée, enrichies de `enveloppe_ciel_clair` et de `indice_ciel_clair`.
+    """
+    resultat = donnees.sort_values(["libelle_region", "heure_decimale", "date_heure"]).copy()
+
+    groupes = resultat.groupby(["libelle_region", "heure_decimale"], observed=True)["solaire"]
+    resultat["enveloppe_ciel_clair"] = groupes.transform(
+        lambda serie: serie.rolling(fenetre_jours, min_periods=fenetre_jours // 2)
+        .quantile(quantile)
+    )
+
+    exploitable = resultat["enveloppe_ciel_clair"] > seuil_enveloppe
+    resultat["indice_ciel_clair"] = (
+        resultat["solaire"].where(exploitable) / resultat["enveloppe_ciel_clair"]
+    )
+    return resultat
+
+
+def indice_journalier(donnees: pd.DataFrame) -> pd.DataFrame:
+    """Moyenne journalière de l'indice de ciel clair, par région.
+
+    Résume la nébulosité d'une journée en un nombre, en agrégeant les créneaux
+    exploitables. Sert aux tests de validation.
+    """
+    exploitables = donnees.dropna(subset=["indice_ciel_clair"])
+    return (
+        exploitables.groupby(["libelle_region", "date"], observed=True)
+        .agg(indice=("indice_ciel_clair", "mean"),
+             creneaux=("indice_ciel_clair", "size"))
+        .reset_index()
+    )
 
 
 def annees_incompletes(donnees: pd.DataFrame, seuil_jours: int = 350) -> list[int]:
