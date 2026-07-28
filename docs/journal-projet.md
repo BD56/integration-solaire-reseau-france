@@ -6,6 +6,68 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-28 (suite 3) : protocole de l'indice de ciel clair, écrit avant construction
+
+Aucun code écrit. Cette entrée fige les choix de construction **et** les critères de validation avant tout calcul, à la demande de Bryan.
+
+### 1. Pourquoi figer avant, et pas après
+
+Regarder la source de validation **pendant** la construction conduirait à ajuster les réglages (longueur de fenêtre, quantile, traitement des nuits) jusqu'à obtenir une bonne corrélation. L'indice se validerait alors trivialement, et la validation ne vaudrait rien.
+
+C'est la discipline déjà appliquée aux prédictions enregistrées avant mesure, étendue cette fois à la **construction de l'outil lui-même**. Chaque réglage est une manette, et chaque manette est une occasion de tricher.
+
+### 2. Ce que l'indice doit mesurer
+
+La **nébulosité**, déduite de la production solaire seule, sans aucune source météorologique.
+
+Principe : la production dépend de la course du soleil (déterministe), de la taille du parc (lente) et de la couverture nuageuse (seule vraiment variable au jour le jour). En estimant ce que le parc produirait par ciel clair, le rapport `production observée / production par ciel clair` isole la nébulosité.
+
+### 3. Choix de construction, figés
+
+| Réglage | Valeur | Justification |
+|---|---|---|
+| Fenêtre glissante | **30 jours** | assez longue pour contenir quelques journées dégagées, assez courte pour suivre la course saisonnière du soleil |
+| Quantile de l'enveloppe | **0,95** | approche le maximum atteignable sans se caler sur une valeur aberrante isolée |
+| Maille de calcul | **créneau horaire × région** | la course du soleil et le parc diffèrent selon l'heure et la région |
+| Exclusion | créneaux où l'enveloppe est **quasi nulle** | la nuit, le rapport n'a pas de sens et diverge |
+
+Ces valeurs reprennent celles de l'étude de faisabilité du 2026-07-25, qui avait mesuré sur l'indice journalier : moyenne 0,717, écart-type 0,226, autocorrélation à J-1 de 0,430.
+
+Elles sont **figées avant toute vérification** et ne seront pas ajustées au vu des résultats de validation. Si l'indice échoue aux tests, c'est l'indice qui sera déclaré inadapté, pas les réglages qui seront retouchés.
+
+### 4. Trois tests internes, sans aucune donnée externe
+
+Critères écrits avant construction.
+
+**Neutralité saisonnière.** Un indice bien construit ne devrait presque pas avoir de cycle saisonnier, l'enveloppe glissante absorbant déjà la course du soleil.
+→ *Échec* si l'indice médian de décembre s'écarte de plus de 0,15 de celui de juin. Ce serait le signe que l'enveloppe manque de journées dégagées en hiver, défaut redouté dès la conception.
+
+**Cohérence spatiale.** Les nuages sont des phénomènes de grande échelle : deux régions voisines devraient avoir des indices journaliers corrélés, deux régions éloignées beaucoup moins.
+→ *Échec* si la corrélation entre régions ne décroît pas avec la distance. L'indice mesurerait alors autre chose que le ciel.
+
+**Comportement sur journées identifiables.** Une journée d'été très productive partout devrait donner un indice proche de 1, une journée de tempête un indice très bas.
+→ *Échec* si les extrêmes ne se comportent pas ainsi.
+
+Ces trois tests peuvent invalider l'indice à eux seuls, avant toute source externe.
+
+### 5. Validation externe, et le piège de circularité
+
+L'indice sert à **départager des agrégations spatiales de la météo**. Le valider **avec** de la météo, puis choisir l'agrégation **avec** l'indice, serait circulaire.
+
+Séparation retenue :
+
+1. **valider** l'indice contre une météo **grossière** (point unique ou moyenne simple), ce qui suffit à établir qu'il suit la nébulosité, sans dépendre du choix à arbitrer ensuite ;
+2. **puis** l'employer pour arbitrer entre agrégations fines.
+
+**Réserve supplémentaire** : il restera à vérifier qu'il **discrimine**. Si toutes les agrégations candidates corrèlent aussi bien avec lui, il ne servira à rien pour les départager.
+
+### 6. Limites connues d'avance
+
+- L'indice capte **tout ce qui réduit la production**, pas seulement les nuages : écrêtement, neige sur les panneaux, pannes, maintenance.
+- Il est **circulaire pour l'explication** : dérivé de la production, il ne peut pas servir à l'expliquer. C'est un instrument de validation, jamais une variable explicative.
+
+---
+
 ## 2026-07-28 (suite 2) : ressource ou parc ? La prédiction est validée
 
 Étape 1 de la phase 2. Code rejouable dans `notebooks/05_ressource_ou_parc.py`. Période 2020-2025, le taux de charge n'existant pas avant.
