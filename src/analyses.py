@@ -469,6 +469,87 @@ def completude_par_annee(donnees: pd.DataFrame, colonnes: list[str]) -> pd.DataF
     return resultat.round(1)
 
 
+def creneaux_par_jour(donnees: pd.DataFrame) -> pd.DataFrame:
+    """Nombre de créneaux par journée et par région, pour vérifier les bascules d'heure.
+
+    Une journée normale compte **48** créneaux de 30 minutes. Deux écarts sont
+    attendus et légitimes, tout autre écart serait un trou de données :
+
+    - **46** le dimanche de mars, où l'horloge saute de 02:00 à 03:00 et où le
+      jour ne dure que 23 heures. Les deux étiquettes fictives ont été retirées
+      au chargement ;
+    - **47** le tout premier jour de la série, qui commence à 00:30.
+
+    Octobre ne produit **pas** d'anomalie ici : la source publie bien 48
+    étiquettes locales, c'est du côté UTC qu'il manque une heure.
+    """
+    par_jour = donnees.groupby(["libelle_region", "date"], observed=True).size()
+    distribution = par_jour.value_counts().sort_index()
+    explications = {
+        46: "dimanche de passage à l'heure d'été, journée de 23 heures",
+        47: "premier jour de la série, qui commence à 00:30",
+        48: "journée complète",
+    }
+    return pd.DataFrame({
+        "creneaux": distribution.index,
+        "journees_x_regions": distribution.values,
+        "explication": [explications.get(n, "⚠️ inattendu, à investiguer")
+                        for n in distribution.index],
+    })
+
+
+def valeurs_impossibles(donnees: pd.DataFrame) -> pd.DataFrame:
+    """Valeurs qui sortent des bornes physiques de leur définition.
+
+    Un taux de charge est une production rapportée à la puissance installée : il
+    ne peut pas dépasser 100 %. Quand il le fait, c'est la **référence de
+    puissance installée qui est en retard** sur le parc réel, pas la production
+    qui est aberrante. Conséquence pratique : `capacite_installee()` inverse
+    cette variable, ses valeurs sont donc sous-estimées aux mêmes endroits.
+
+    Le taux de couverture, lui, peut légitimement dépasser 100 % : une région
+    peu consommatrice et bien ensoleillée exporte son surplus.
+    """
+    lignes = []
+    for colonne in [c for c in donnees.columns if c.startswith("tch_")]:
+        serie = donnees[colonne].dropna()
+        if serie.empty:
+            continue
+        hors = serie[serie > 100]
+        if hors.empty:
+            continue
+        concernees = donnees.loc[hors.index, "libelle_region"].value_counts()
+        lignes.append({
+            "variable": colonne,
+            "lignes_au_dessus_de_100_%": len(hors),
+            "part_%": round(100 * len(hors) / len(serie), 4),
+            "maximum_%": round(float(serie.max()), 2),
+            "regions_concernees": ", ".join(
+                f"{r} ({n})" for r, n in concernees.head(4).items()
+            ),
+        })
+    return pd.DataFrame(lignes)
+
+
+def part_reconstruite(donnees: pd.DataFrame) -> pd.DataFrame:
+    """Part des taux de couverture recalculés par le projet, année par année.
+
+    Avant 2020, RTE ne publiait pas les `tco_`. Le projet les reconstruit par
+    `100 × filière / consommation`, formule vérifiée sur la période où les deux
+    coexistent (erreur médiane de 0,003 point). Cette table existe pour qu'aucun
+    lecteur ne confonde une valeur publiée par RTE et une valeur du projet.
+    """
+    if "tco_reconstruit" not in donnees.columns:
+        return pd.DataFrame(columns=["annee", "part_reconstruite_%", "origine"])
+    part = donnees.groupby("annee")["tco_reconstruit"].mean().mul(100).round(1)
+    return pd.DataFrame({
+        "annee": part.index,
+        "part_reconstruite_%": part.values,
+        "origine": ["reconstruit par le projet" if p > 50 else "publié par RTE"
+                    for p in part.values],
+    })
+
+
 def valeurs_negatives(donnees: pd.DataFrame, filieres: list[str]) -> pd.DataFrame:
     """Compte et ampleur des productions négatives, qui traduisent une consommation."""
     lignes = []

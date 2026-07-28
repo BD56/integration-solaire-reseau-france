@@ -24,11 +24,16 @@ from src.analyses import (  # noqa: E402
     SANS_AGREGATION_NATIONALE,
     agreger_national,
     annees_incompletes,
+    completude_par_annee,
+    creneaux_par_jour,
     grille_horaire,
     impact_negatifs,
+    part_reconstruite,
     profils_par_annee,
     profils_saisonniers,
     profondeur_creux,
+    valeurs_impossibles,
+    valeurs_negatives,
 )
 from src.graphiques import (  # noqa: E402
     carte_chaleur,
@@ -369,4 +374,187 @@ elif page == "Profils saisonniers":
 # ----------------------------------------------------------------------------
 elif page == "Qualité des données":
     st.title("Qualité des données")
-    st.info("Page à construire : complétude, valeurs négatives, ruptures temporelles.")
+    st.caption(
+        "Ce que ces données ne disent pas, et les pièges qu'elles tendent. "
+        "Tout ce qui suit est mesuré sur le jeu réellement chargé, pas recopié "
+        "d'une documentation."
+    )
+
+    st.warning(
+        "**Le piège principal de ce jeu.** Plusieurs variables passent de "
+        "« case vide » à « zéro » en 2021. Une moyenne calculée sur les 12 "
+        "régions plonge alors brutalement, sans qu'aucun phénomène physique ne "
+        "se soit produit. La moyenne du nucléaire chute ainsi de **37,1 %** en "
+        "2021, alors qu'elle **augmente de 7,9 %** sur les 7 régions qui ont "
+        "réellement une centrale.",
+        icon="⚠️",
+    )
+
+    onglet_completude, onglet_bornes, onglet_temps = st.tabs(
+        ["Complétude et ruptures", "Valeurs suspectes", "Temps et reconstruction"]
+    )
+
+    # ------------------------------------------------------------------
+    with onglet_completude:
+        st.subheader("Taux de remplissage, année par année")
+        st.caption(
+            "Une colonne qui passe brutalement de 0 à 100 % signale un "
+            "changement de méthode chez RTE, pas un changement du réseau. "
+            "C'est ici qu'on les repère."
+        )
+        COLONNES_SUIVIES = [
+            "consommation", "solaire", "eolien", "nucleaire", "pompage",
+            "hydraulique", "thermique", "bioenergies",
+            "tco_solaire", "tch_solaire", "eolien_terrestre", "stockage_batterie",
+        ]
+        remplissage = completude_par_annee(df, COLONNES_SUIVIES)
+        st.dataframe(
+            remplissage.style.format("{:.1f}").background_gradient(
+                cmap="RdYlGn", vmin=0, vmax=100, axis=None
+            ),
+            use_container_width=True,
+        )
+
+        gauche, droite = st.columns(2)
+        with gauche:
+            st.markdown(
+                "**2020 : changement de convention.** Apparition des taux de "
+                "couverture et de charge, et disparition simultanée de toutes "
+                "les valeurs négatives. Frontière à respecter dans toute série "
+                "solaire longue."
+            )
+        with droite:
+            st.markdown(
+                "**2021 : vide devenu zéro.** Nucléaire, pompage, éolien "
+                "terrestre et batteries. Ne jamais moyenner sur les 12 régions "
+                "sans vérifier le remplissage : restreindre aux régions "
+                "réellement concernées."
+            )
+
+        st.subheader("Colonnes inexploitables")
+        st.markdown(
+            "- `stockage_batterie` et `destockage_batterie` sont **toujours à "
+            "zéro** sur toute la période. Aucune analyse ne peut s'appuyer "
+            "dessus ; le seul stockage observable est le `pompage`.\n"
+            "- `column_30` était entièrement vide, elle est supprimée au "
+            "chargement."
+        )
+
+    # ------------------------------------------------------------------
+    with onglet_bornes:
+        st.subheader("Productions négatives")
+        st.caption(
+            "Une production négative est physiquement réelle : l'installation "
+            "consomme (auxiliaires, onduleurs la nuit). Le problème n'est pas "
+            "la valeur, c'est qu'elle est **déclarée de façon incohérente**."
+        )
+        negatives = valeurs_negatives(
+            df, ["solaire", "eolien", "hydraulique", "nucleaire", "bioenergies"]
+        )
+        st.dataframe(
+            negatives.rename(columns={
+                "filiere": "filière", "lignes_negatives": "lignes négatives",
+                "part_%": "part (%)", "minimum": "minimum (MW)",
+                "mediane_negatifs": "médiane des négatifs (MW)",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+        st.info(
+            "Le solaire négatif est à **99,8 % en Nouvelle-Aquitaine**, entre "
+            "2015 et 2019. C'est une pratique de déclaration régionale, pas un "
+            "phénomène physique : **ne jamais comparer les régions sur cette "
+            "base**. Ces valeurs ne sont pas corrigées, parce que les ramener à "
+            "zéro détruirait l'information d'autoconsommation.",
+            icon="ℹ️",
+        )
+
+        st.subheader("Valeurs physiquement impossibles")
+        st.caption(
+            "Un taux de charge rapporte une production à la puissance "
+            "installée : il ne peut pas dépasser 100 %. Quand il le fait, c'est "
+            "la référence de puissance installée qui est en retard sur le parc "
+            "réel."
+        )
+        impossibles = valeurs_impossibles(df)
+        if impossibles.empty:
+            st.success("Aucun taux de charge au-dessus de 100 % sur ce périmètre.")
+        else:
+            st.dataframe(
+                impossibles.rename(columns={
+                    "variable": "variable",
+                    "lignes_au_dessus_de_100_%": "lignes > 100 %",
+                    "part_%": "part (%)", "maximum_%": "maximum (%)",
+                    "regions_concernees": "régions concernées",
+                }),
+                use_container_width=True, hide_index=True,
+            )
+            st.warning(
+                "L'ampleur varie énormément selon la filière : le solaire "
+                "plafonne à 172 %, mais l'**hydraulique atteint 2 575 %** et "
+                "les bioénergies 719 %. Ces filières ont un parc régional très "
+                "petit, où toute erreur de référence explose en pourcentage. "
+                "Conséquence directe : la puissance installée dérivée en "
+                "inversant le taux de charge est **sous-estimée** aux mêmes "
+                "endroits.",
+                icon="⚠️",
+            )
+
+    # ------------------------------------------------------------------
+    with onglet_temps:
+        st.subheader("Changements d'heure")
+        st.caption(
+            "La source publie toujours 48 créneaux par jour, y compris les "
+            "jours de bascule. Cela produit deux anomalies de nature opposée."
+        )
+        st.dataframe(
+            creneaux_par_jour(df).rename(columns={
+                "creneaux": "créneaux dans la journée",
+                "journees_x_regions": "journées × régions",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+        st.markdown(
+            "**Mars** : les créneaux locaux 02:00 et 02:30 n'existent pas mais "
+            "sont publiés quand même. Ils sont **retirés** au chargement (336 "
+            "au total), pas dédupliqués au hasard.\n\n"
+            "**Octobre** : l'inverse, une heure réelle **manque** (312 "
+            "créneaux). Elle n'apparaît pas dans le tableau ci-dessus parce que "
+            "le trou est du côté UTC, pas du côté des étiquettes locales."
+        )
+        st.error(
+            "**À retenir avant tout modèle de série temporelle.** À cause du "
+            "trou d'octobre, la série UTC **n'est pas une grille régulière** : "
+            "on y observe un saut de 1 h 30 une fois par an et par région. Tout "
+            "traitement supposant un pas constant (décalages, autocorrélation, "
+            "modèle temporel) butera dessus. Sans effet sur les analyses par "
+            "profil, et sans effet sur le solaire, puisqu'il fait nuit.",
+            icon="🚧",
+        )
+
+        st.subheader("Ce que RTE publie, et ce que le projet reconstruit")
+        st.caption(
+            "Avant 2020, RTE ne publiait pas les taux de couverture. Le projet "
+            "les recalcule par `100 × filière / consommation`, formule vérifiée "
+            "sur la période où les deux coexistent : erreur médiane de 0,003 "
+            "point."
+        )
+        st.dataframe(
+            part_reconstruite(df).rename(columns={
+                "annee": "année", "part_reconstruite_%": "part reconstruite (%)",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+        st.caption(
+            "La colonne `tco_reconstruit` marque ces lignes dans les données, "
+            "pour qu'aucune analyse ne confonde une valeur publiée par RTE et "
+            "une valeur recalculée ici."
+        )
+
+        st.subheader("Nature des données")
+        st.markdown(
+            "La colonne `nature` distingue **données définitives** (jusqu'à "
+            "2024) et **données consolidées** (2025 et 2026, encore "
+            "révisables). Ce n'est pas un doublon mais un découpage temporel. "
+            "Un résultat qui reposerait sur la seule année 2025 doit le "
+            "signaler."
+        )
