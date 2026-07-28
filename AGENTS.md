@@ -82,7 +82,11 @@ Ces règles viennent d'échecs constatés, détaillés dans le [journal](docs/jo
 
 **Chercher la méthode établie avant d'improviser une mesure.** Pour une saisonnalité, il existe la décomposition STL, la force de saisonnalité de Hyndman, l'analyse spectrale, le test de Kruskal-Wallis. Trois mesures improvisées se sont révélées sans valeur au cours de ce projet.
 
-**Un test qu'on passe n'est pas un test qui départage.** Toute mesure élaborée doit être confrontée à la **mesure paresseuse qu'elle prétend remplacer**, sur exactement la même base. L'indice de ciel clair passait deux tests propres (cohérence spatiale, journées extrêmes) et a pourtant été rejeté : face au simple facteur de charge `tch_solaire`, il perdait dans 12 régions sur 12. Ces tests n'étaient pas faux, ils étaient insuffisants, car ils ne mesuraient que sa plausibilité.
+**Un test qu'on passe n'est pas un test qui départage.** Toute mesure élaborée doit être confrontée à la **mesure paresseuse qu'elle prétend remplacer**. L'indice de ciel clair passait deux tests propres (cohérence spatiale, journées extrêmes) sans qu'aucun n'établisse jamais qu'il fasse mieux que le simple facteur de charge `tch_solaire`. Il a fallu poser la question pour le savoir.
+
+**« Sur exactement la même base » est une exigence, pas une formule.** Le corollaire de la règle précédente s'est retourné contre elle : l'indice a d'abord été **rejeté à tort** parce que la comparaison n'était pas équitable. L'indice était résumé en moyenne de rapports, tandis que la référence et le concurrent étaient des rapports de cumuls. Le fichier justifiait pourtant le rapport de cumuls par écrit, quelques lignes plus haut. **Avant de conclure d'une comparaison, vérifier que les deux termes sont calculés de la même façon**, et se méfier tout particulièrement quand le résultat va dans le sens qu'on trouve élégant (ici : un outil compliqué qui ne sert à rien).
+
+**Une correction ne vaut que si elle redescend dans le code.** L'affirmation fausse sur le pic solaire a été retractée au journal le 2026-07-26 et vivait toujours, deux jours plus tard, dans la docstring de `src/preparation.py`, module désigné comme source de vérité. Corriger le journal ne suffit pas : le code, le `README.md` et ce fichier sont ce que lit un assistant qui n'a que le dépôt.
 
 **Vérifier qu'un test peut échouer.** Question à poser systématiquement : *le résultat découle-t-il de la définition des grandeurs comparées ?* Si oui, le test ne prouve rien. Une validation doit confronter à une référence **extérieure** à ce qu'elle valide. C'est cette question qui a fait tomber le diagnostic circulaire de l'indice de ciel clair.
 
@@ -122,6 +126,19 @@ Conséquences pratiques :
 
 ## 9. État et prochaine étape
 
-Voir la dernière entrée de [`docs/journal-projet.md`](docs/journal-projet.md), qui fait foi.
+Voir la dernière entrée de [`docs/journal-projet.md`](docs/journal-projet.md), qui fait foi. Cette section se périme vite : en cas de désaccord, **le journal l'emporte**.
 
-Au 2026-07-25 : pipeline de données, dictionnaire de données et script d'exploration en place. **Aucune sous-question n'est encore traitée, aucun graphique produit.** Prochaine étape prévue : `notebooks/02_visualisation.py`, tracer la demande nette sur une journée type.
+Au 2026-07-28, après revue contradictoire :
+
+| Volet | État |
+|---|---|
+| Nettoyage, dictionnaire, exploration | fait, vérifié au chiffre près |
+| Sous-question 1 (dynamique journalière et saisonnière) | traitée |
+| Sous-question 2 (basculement de la demande nette) | traitée, 2019 en Nouvelle-Aquitaine, quatre contrôles |
+| Sous-question 3 (équilibrage) | traitée, 3 hypothèses validées sur 4 |
+| Tableau de bord Streamlit | fonctionnel, deux pages sur trois remplies |
+| Phase 2, source météo ERA5 | récupérée, `src/meteo.py` |
+| Phase 2, dimension géographique | **à faire, prochaine étape** |
+| Modélisation et prévision | à faire, périmètre non tranché (ce dépôt ou un second) |
+
+Une **revue contradictoire à trois** (un attaquant, un neutre, l'auteur en défense) a été menée le 2026-07-28. Elle a fait tomber deux conclusions publiées, corrigé un chiffre, et durci plusieurs formulations. Ses conclusions sont dans le journal, entrée du 2026-07-28 (suite 8). **La lire avant de s'appuyer sur un résultat de ce dépôt.**

@@ -70,8 +70,20 @@ print(f"Production : {len(df):,} lignes | Météo : {len(meteo):,} lignes")
 # %% Indice de ciel clair journalier
 # L'indice est construit sur TOUTE la période, pas seulement sur 2021-2024 :
 # l'enveloppe glissante a besoin des bords pour ses fenêtres de 30 jours.
-avec_indice = indice_ciel_clair(df)
-journalier = indice_journalier(avec_indice)
+#
+# ⚠️ DEUX CORRECTIONS appliquées le 2026-07-28 après revue, sur une première
+# version dont le verdict de rejet a dû être retiré :
+#
+# 1. `methode="cumuls"`. La version initiale résumait la journée en MOYENNE DE
+#    RAPPORTS, alors que k_t (ligne plus bas) et le concurrent `tch_solaire` sont
+#    tous deux des RAPPORTS DE CUMULS. La comparaison n'était pas à base
+#    identique, et c'est ce seul écart qui produisait le rejet. Le comble est que
+#    ce fichier justifie lui-même le rapport de cumuls pour k_t, quelques lignes
+#    plus bas, avant d'appliquer l'inverse à l'indice.
+# 2. `causale=True`. L'enveloppe par défaut porte sur J-29 à J INCLUS, donc elle
+#    contient le jour qu'elle sert à juger. Version causale : J-30 à J-1.
+avec_indice = indice_ciel_clair(df, causale=True)
+journalier = indice_journalier(avec_indice, methode="cumuls")
 journalier["date"] = pd.to_datetime(journalier["date"])
 
 print(f"Journées couvertes par l'indice : {len(journalier):,}")

@@ -96,11 +96,52 @@ print(f"Mesuré     : production {facteur_production:.1f}, "
 # s'additionnent. Une différence de rapports donnerait un résultat faux.
 import numpy as np  # noqa: E402
 
+# ⚠️ RETIRÉ le 2026-07-28 après revue. Le calcul ci-dessous normalisait par la
+# SOMME DES DEUX LOGARITHMES, et non par le logarithme de l'écart qu'il prétend
+# décomposer. Or les trois maxima ne sont pas atteints par les mêmes régions :
+# la production et le parc culminent en Nouvelle-Aquitaine, le facteur de charge
+# en Provence-Alpes-Côte d'Azur. L'identité ne se transporte donc pas aux
+# rapports max/min : 15,265 x 1,377 = 21,0 alors que la production varie de 19,2.
+# On l'affiche pour mémoire, on ne le publie plus.
 log_parc, log_ressource = np.log(facteur_parc), np.log(facteur_ressource)
 part_ressource = log_ressource / (log_parc + log_ressource)
-print(f"Décomposition logarithmique de l'écart de production :")
-print(f"  parc installé : {100 * (1 - part_ressource):4.0f} %")
-print(f"  ressource     : {100 * part_ressource:4.0f} %")
+print("Ancienne décomposition, RETIRÉE (normalisation fausse, pour mémoire) :")
+print(f"  parc {100 * (1 - part_ressource):.0f} %, ressource {100 * part_ressource:.0f} %")
+print(f"  contrôle : log(production) = {np.log(facteur_production):.4f} mais "
+      f"log(parc) + log(ressource) = {log_parc + log_ressource:.4f}. "
+      "L'identité ne se ferme pas.\n")
+
+# %% Décomposition exacte, qui elle se ferme
+# Sur les 12 régions, production = capacité x facteur de charge est vraie région
+# par région. En logarithmes, la variance se décompose exactement :
+#
+#     var(log prod) = var(log parc) + var(log ressource) + 2 cov(log parc, log ressource)
+#
+# Le terme de covariance n'est pas un résidu à négliger : c'est un résultat en
+# soi. Il dit que le parc a été construit là où le soleil est.
+regional = tableau.copy()
+regional["capacite_effective"] = 100 * regional["production_mw"] / regional["facteur_charge_%"]
+lp = np.log(regional["production_mw"])
+lc = np.log(regional["capacite_effective"])
+lf = np.log(regional["facteur_charge_%"])
+
+variance = lp.var(ddof=0)
+v_parc, v_ressource = lc.var(ddof=0), lf.var(ddof=0)
+covariance = np.cov(lc, lf, ddof=0)[0, 1]
+
+print("Décomposition EXACTE de la variance des logarithmes (12 régions) :")
+print(f"  var(log production)  = {variance:.5f}  "
+      f"(contrôle : {v_parc + v_ressource + 2 * covariance:.5f}, l'identité se ferme)")
+print(f"  parc installé        : {100 * v_parc / variance:5.1f} %")
+print(f"  ressource SEULE      : {100 * v_ressource / variance:5.1f} %")
+print(f"  covariance parc x ressource : {100 * 2 * covariance / variance:5.1f} %")
+print(f"  corrélation log(parc), log(ressource) : {np.corrcoef(lc, lf)[0, 1]:.3f}")
+print()
+print("  Lecture : la ressource seule ne pèse presque rien. Ce qui pèse, après")
+print("  le parc, c'est le terme croisé, et il dit quelque chose de plus")
+print("  intéressant que l'ancien « 10 % de ressource » : le parc a été")
+print("  construit là où le soleil est. L'ancien chiffre confondait la")
+print("  ressource avec cette covariance.")
 
 # %% Classement par ressource, à comparer au classement par production
 comparaison = pd.DataFrame({

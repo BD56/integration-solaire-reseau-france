@@ -256,6 +256,7 @@ def indice_ciel_clair(
     fenetre_jours: int = 30,
     quantile: float = 0.95,
     seuil_enveloppe: float = 10.0,
+    causale: bool = False,
 ) -> pd.DataFrame:
     """Indicateur de nébulosité déduit de la production solaire seule.
 
@@ -287,26 +288,29 @@ def indice_ciel_clair(
     - `seuil_enveloppe` : en deçà, le rapport n'a pas de sens et diverge. Écarte
       les créneaux nocturnes.
 
-    ⛔ **REJETÉ le 2026-07-28. Conservé comme trace, à ne pas utiliser.**
+    ✅ **VALIDÉ le 2026-07-28, mais SUPPLANTÉ. Utilisable, rarement utile.**
 
-    Confronté à l'irradiance ERA5, source extérieure aux données de production,
-    l'indice **n'apporte rien** par rapport au simple facteur de charge
-    `tch_solaire` calculé sur les mêmes créneaux (`notebooks/07_validation_indice.py`,
-    journal du 2026-07-28 suite 7). Corrélation de Spearman à l'indice de clarté
-    k_t, médiane sur les 12 régions, 2021-2024 :
+    ⚠️ Un premier verdict de **rejet** a été publié puis **retiré le même jour**
+    après revue : il reposait sur une comparaison qui n'était pas à base
+    identique (voir `indice_journalier`). L'indice était résumé en moyenne de
+    rapports quand la référence k_t et le concurrent `tch_solaire` étaient tous
+    deux des rapports de cumuls. L'écart mesuré était un artefact d'agrégation.
 
-        indice de ciel clair            0,763
-        tch_solaire, mêmes créneaux     0,798   -> l'emporte dans 12 régions / 12
+    Comparaison corrigée, Spearman à l'indice de clarté k_t d'ERA5, médiane sur
+    les 12 régions, 2021-2024 (`notebooks/07_validation_indice.py`) :
 
-    Une analyse post hoc à saisonnalité neutralisée (corrélations calculées dans
-    chaque mois) n'a pas rétabli l'indice : il ne l'emporte que dans 4 régions
-    sur 12, sous le seuil de 7 fixé avant le calcul. Les deux mesures deviennent
-    d'ailleurs quasi équivalentes (0,798 contre 0,813), ce qui montre que toute
-    la machinerie de l'enveloppe glissante n'achète rien.
+        indice, enveloppe causale       0,820   -> l'emporte dans 11 régions / 12
+        tch_solaire, mêmes créneaux     0,798
 
-    ➡️ **Ce qu'il faut employer à la place** : `shortwave_radiation` d'ERA5, via
-    `src.meteo`, et `irradiance_extraterrestre()` pour former k_t. C'est une
-    mesure externe, sans circularité, et meilleure.
+    Volet A du protocole : 0,820 ≥ 0,80, donc **validé**. Volet B : l'indice bat
+    le concurrent trivial, donc **utile**. Le gain reste modeste, +0,022.
+
+    ➡️ **Employer néanmoins `shortwave_radiation` d'ERA5** (via `src.meteo`, avec
+    `irradiance_extraterrestre()` pour former k_t) dès qu'une source externe est
+    acceptable. Non pas parce que l'indice serait mauvais, mais parce qu'il reste
+    **circulaire pour l'explication** : dérivé de la production, il ne peut pas
+    servir à l'expliquer. Sa niche est étroite : mesurer la nébulosité quand on
+    n'a que la production, ce qui n'est plus le cas de ce projet.
 
     Trois tentatives de validation antérieures avaient échoué sans qu'aucune ne
     teste réellement l'enveloppe (journal du 2026-07-28, section 9) : la première
@@ -315,12 +319,11 @@ def indice_ciel_clair(
     des journées la dépassent par construction), la troisième reposait sur une
     inclinaison de panneaux supposée alors que le parc français est bimodal.
 
-    Deux tests propres restaient en sa faveur : la cohérence spatiale (r = −0,945
-    entre distance et corrélation) et le comportement des journées extrêmes. Ils
-    n'étaient pas faux, ils étaient **insuffisants** : ils établissaient que
-    l'indice suit bien un phénomène de grande échelle, jamais qu'il le suit mieux
-    qu'une mesure triviale. C'est la leçon à retenir, un test qu'on passe n'est
-    pas un test qui départage.
+    Défaut de construction restant, mesuré à la revue : l'enveloppe par défaut
+    (`causale=False`) **contient le jour évalué**, donc 4,69 % des créneaux
+    dépassent leur propre enveloppe. Passer `causale=True` supprime cette fuite
+    pour un coût nul (0,820 contre 0,823). **C'est indispensable pour tout usage
+    prédictif**, où utiliser le jour évalué serait disqualifiant.
 
     Limites, connues d'avance :
 
@@ -339,11 +342,18 @@ def indice_ciel_clair(
     """
     resultat = donnees.sort_values(["libelle_region", "heure_decimale", "date_heure"]).copy()
 
+    def enveloppe(serie: pd.Series) -> pd.Series:
+        glissante = serie.rolling(fenetre_jours, min_periods=fenetre_jours // 2)
+        if causale:
+            # `shift(1)` d'abord : la fenêtre porte alors sur les jours J-30 à
+            # J-1, sans jamais contenir le jour évalué.
+            return serie.shift(1).rolling(
+                fenetre_jours, min_periods=fenetre_jours // 2
+            ).quantile(quantile)
+        return glissante.quantile(quantile)
+
     groupes = resultat.groupby(["libelle_region", "heure_decimale"], observed=True)["solaire"]
-    resultat["enveloppe_ciel_clair"] = groupes.transform(
-        lambda serie: serie.rolling(fenetre_jours, min_periods=fenetre_jours // 2)
-        .quantile(quantile)
-    )
+    resultat["enveloppe_ciel_clair"] = groupes.transform(enveloppe)
 
     exploitable = resultat["enveloppe_ciel_clair"] > seuil_enveloppe
     resultat["indice_ciel_clair"] = (
@@ -352,19 +362,41 @@ def indice_ciel_clair(
     return resultat
 
 
-def indice_journalier(donnees: pd.DataFrame) -> pd.DataFrame:
-    """Moyenne journalière de l'indice de ciel clair, par région.
+def indice_journalier(donnees: pd.DataFrame, methode: str = "cumuls") -> pd.DataFrame:
+    """Résumé journalier de l'indice de ciel clair, par région.
 
-    Résume la nébulosité d'une journée en un nombre, en agrégeant les créneaux
-    exploitables. Sert aux tests de validation.
+    Deux conventions d'agrégation, et le choix n'est pas anodin :
+
+    - `"cumuls"` (par défaut) : **rapport des cumuls**, `Σ solaire / Σ enveloppe`
+      sur les créneaux exploitables. C'est la convention standard des indices de
+      clarté, et celle appliquée à l'indice de clarté k_t auquel on compare.
+    - `"moyenne"` : **moyenne des rapports** créneau par créneau. Conservée
+      uniquement pour rejouer les résultats antérieurs au 2026-07-28.
+
+    ⚠️ La convention `"moyenne"` était le défaut jusqu'au 2026-07-28, et c'est
+    **elle qui a produit un verdict de rejet erroné** : elle donne un poids égal
+    aux créneaux d'aube et de crépuscule, où le rapport est très bruité, alors
+    que la référence k_t et le concurrent `tch_solaire` sont tous deux des
+    rapports de cumuls. La comparaison n'était donc pas à base identique. Sur
+    2021-2024, la médiane passe de 0,763 (moyenne) à 0,823 (cumuls), et le
+    nombre de régions où l'indice l'emporte de 0 sur 12 à 11 sur 12.
     """
     exploitables = donnees.dropna(subset=["indice_ciel_clair"])
-    return (
-        exploitables.groupby(["libelle_region", "date"], observed=True)
-        .agg(indice=("indice_ciel_clair", "mean"),
-             creneaux=("indice_ciel_clair", "size"))
-        .reset_index()
-    )
+    groupes = exploitables.groupby(["libelle_region", "date"], observed=True)
+
+    if methode == "moyenne":
+        resume = groupes.agg(indice=("indice_ciel_clair", "mean"),
+                             creneaux=("indice_ciel_clair", "size"))
+        return resume.reset_index()
+
+    if methode != "cumuls":
+        raise ValueError(f"méthode inconnue : {methode!r} (attendu 'cumuls' ou 'moyenne')")
+
+    resume = groupes.agg(solaire=("solaire", "sum"),
+                         enveloppe=("enveloppe_ciel_clair", "sum"),
+                         creneaux=("indice_ciel_clair", "size"))
+    resume["indice"] = resume["solaire"] / resume["enveloppe"]
+    return resume.reset_index()[["libelle_region", "date", "indice", "creneaux"]]
 
 
 def annees_incompletes(donnees: pd.DataFrame, seuil_jours: int = 350) -> list[int]:
@@ -389,10 +421,21 @@ def impact_negatifs(donnees: pd.DataFrame, filiere: str = "solaire") -> dict:
     avant = donnees[donnees["annee"] < 2020]
     serie = avant[filiere]
     negatives = serie[serie < 0]
-    niveau = donnees["consommation"].median()
+
+    # Périmètre du niveau de référence : AVANT 2020 également, pas toute la
+    # période. Comparer une médiane d'avant 2020 à un niveau calculé sur
+    # 2013-2026 mélangeait deux périmètres pour rien (corrigé le 2026-07-28).
+    niveau = avant["consommation"].median()
+
+    # Deux parts distinctes, parce que les confondre a déjà induit en erreur :
+    # `part_avant_2020_%` rapporte aux seuls relevés d'avant 2020, tandis que
+    # `part_periode_%` rapporte à l'ensemble affiché. La première vaut environ le
+    # double de la seconde, et c'est la seconde que l'on veut quand on écrit
+    # « de la période » (corrigé le 2026-07-28).
     return {
         "lignes": len(negatives),
-        "part_%": round(100 * len(negatives) / len(serie), 2) if len(serie) else 0.0,
+        "part_avant_2020_%": round(100 * len(negatives) / len(serie), 2) if len(serie) else 0.0,
+        "part_periode_%": round(100 * len(negatives) / len(donnees), 2) if len(donnees) else 0.0,
         "mediane": float(negatives.median()) if len(negatives) else 0.0,
         "minimum": float(serie.min()) if len(serie) else 0.0,
         "poids_relatif_%": round(abs(negatives.median()) / niveau * 100, 3)

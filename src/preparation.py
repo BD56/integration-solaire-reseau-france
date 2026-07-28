@@ -18,11 +18,32 @@ Nettoyages appliqués (chacun justifié par une vérification sur les données) 
 Point de vigilance sur le fuseau horaire
 ----------------------------------------
 `date_heure` est en **UTC**, alors que les colonnes `date` et `heure` sont en
-heure locale. Raisonner sur l'heure UTC fabriquerait une fausse déformation
-saisonnière : le pic solaire moyen y tombe à 11 h en juin contre 12 h en
-décembre, un décalage dû au seul changement d'heure. En heure locale il tombe
-à 13 h dans les deux cas. Les profils journaliers doivent donc utiliser
-`heure_decimale`, dérivée de l'heure locale.
+heure locale. Les deux repères ne sont pas interchangeables, et il faut savoir
+lequel on veut.
+
+Mesuré (Nouvelle-Aquitaine, 2023-2025, heure du maximum du profil moyen) :
+
+| Repère | Juin | Décembre |
+|---|---|---|
+| UTC | 12 h | 12 h |
+| Heure locale | **14 h** | **13 h** |
+
+C'est **l'UTC qui est stationnaire**, et l'heure locale qui se déplace d'une
+heure : le midi solaire ne bouge pas, c'est l'horloge civile qui saute au
+changement d'heure.
+
+Le projet raisonne néanmoins en **heure locale**, et c'est un choix délibéré :
+l'objet d'étude est la **demande humaine**, qui suit l'horloge et non le soleil.
+Les profils journaliers utilisent donc `heure_decimale`. Pour tout ce qui relève
+de la géométrie solaire (hauteur du soleil, ciel clair, irradiance théorique),
+c'est l'inverse : `src/analyses.py` calcule en UTC, précisément parce que c'est
+le repère stable.
+
+⚠️ Cette section affirmait exactement le contraire jusqu'au 2026-07-28 (« le pic
+tombe à 13 h dans les deux cas en heure locale »). L'erreur avait été retractée
+au journal dès le 2026-07-26 mais n'était jamais redescendue jusqu'ici, dans le
+module qui fait pourtant référence. Aucun résultat n'en dépendait, la convention
+retenue étant la bonne pour de meilleures raisons que celles invoquées.
 
 Changements d'heure : un doublon en mars, un trou en octobre
 ------------------------------------------------------------
@@ -39,8 +60,12 @@ reviendrait à inventer des observations pour un moment qui n'a pas existé.
 **Octobre** (l'horloge recule de 03:00 à 02:00, le jour dure 25 heures).
 L'heure locale 02:00 à 02:59 a lieu deux fois, mais n'est publiée qu'une seule
 fois, pour la seconde occurrence. La première n'est enregistrée nulle part :
-il manque une heure réelle (créneaux 00:00 et 00:30 UTC), soit 336 créneaux sur
-l'ensemble du jeu (0,012 %).
+il manque une heure réelle (créneaux 00:00 et 00:30 UTC), soit **312** créneaux
+sur l'ensemble du jeu (0,011 %), pour 13 bascules d'octobre présentes dans les
+données (2013 à 2025) × 12 régions × 2 créneaux.
+
+Ne pas confondre avec le compte de **mars**, qui vaut 336 : les bascules de mars
+sont au nombre de 14 (2013 à 2026), le jeu s'arrêtant fin avril 2026.
 
 ⚠️ **À retenir pour un futur volet de modélisation ou de prévision.** À cause du
 trou d'octobre, la série UTC n'est **pas une grille régulière** : on y observe un

@@ -125,8 +125,20 @@ print("  Les 5 journées les plus sombres (moyenne nationale) :")
 print(extremes.head(5).round(3).to_string())
 print("\n  Les 5 journées les plus lumineuses :")
 print(extremes.tail(5).round(3).to_string())
-test3 = "RÉUSSI" if extremes.max() > 0.9 and extremes.min() < 0.4 else "ÉCHOUÉ"
-print(f"\n  TEST 3 {test3}   (attendu : maximum proche de 1, minimum très bas)")
+# ⚠️ CORRIGÉ le 2026-07-28 après revue. Le critère n'avait PAS DE BORNE
+# SUPÉRIEURE : `extremes.max() > 0.9` était satisfait par un maximum de 1,345,
+# donc par une valeur physiquement impossible. Un indice de ciel clair vaut au
+# plus 1 par définition ; au-delà, la production dépasse ce que l'enveloppe
+# prétend être le maximum atteignable, ce qui signale une enveloppe fausse et non
+# un ciel exceptionnel. Le test scorait « réussi » sur le symptôme même qu'il
+# aurait dû détecter, et le journal le comptait ensuite parmi les « tests
+# propres » en faveur de l'indice. Un test sans borne d'un côté ne départage pas.
+haut, bas = extremes.max(), extremes.min()
+test3 = "RÉUSSI" if 0.9 < haut <= 1.05 and bas < 0.4 else "ÉCHOUÉ"
+print(f"\n  TEST 3 {test3}   (attendu : maximum entre 0,9 et 1,05, minimum très bas)")
+if haut > 1.05:
+    print(f"  ÉCHEC PAR LE HAUT : maximum à {haut:.3f}, or l'indice ne peut pas")
+    print("  dépasser 1. L'enveloppe est trop basse sur ces journées.")
 
 # %% Verdict des trois tests internes
 print(pd.DataFrame([

@@ -35,6 +35,7 @@ from src.graphiques import (  # noqa: E402
     courbes_profil,
     normaliser,
     plafond_couleur,
+    plage_commune,
 )
 from src.graphiques import profils_par_annee as figure_par_annee  # noqa: E402
 from src.preparation import SAISONS, charger_donnees  # noqa: E402
@@ -200,6 +201,10 @@ if page == "Cartes de chaleur":
     )
     if variable == "tch_solaire":
         note += " Le taux de charge n'existe qu'à partir de 2020."
+    if variable == "tco_solaire":
+        note += (" ⚠️ Avant 2020, RTE ne publiait pas le taux de couverture : "
+                 "les valeurs affichées sont **reconstruites** par le projet "
+                 "(`100 × solaire / consommation`, erreur médiane 0,003 point).")
     st.caption(note)
 
     if comparer and echelle != "Commune aux deux":
@@ -264,11 +269,16 @@ elif page == "Profils saisonniers":
                 + ", ".join(f"{s} {n}" for s, n in jours.items()) + "."
             )
 
+        # Échelle verticale commune aux quatre saisons : sans elle, chaque
+        # panneau se cale sur ses propres valeurs et l'hiver, deux fois plus
+        # haut que l'été, paraît d'amplitude comparable.
+        echelle_commune = plage_commune(profils)
+
         colonnes = st.columns(2)
         for indice, saison in enumerate(SAISONS):
             with colonnes[indice % 2]:
                 st.plotly_chart(
-                    courbes_profil(profils, saison),
+                    courbes_profil(profils, saison, plage_y=echelle_commune),
                     use_container_width=True,
                     key=f"profil_{saison}",
                 )
@@ -325,7 +335,9 @@ elif page == "Profils saisonniers":
                     "Avant 2020, RTE reportait la consommation propre des "
                     "installations, d'où des valeurs solaires négatives, supprimées "
                     f"depuis. Dans cette région : **{nombre(impact['lignes'])} relevés** "
-                    f"({nombre(impact['part_%'], 2)} % de la période), de médiane "
+                    f"({nombre(impact['part_periode_%'], 2)} % de la période affichée, "
+                    f"{nombre(impact['part_avant_2020_%'], 2)} % des relevés d'avant "
+                    "2020), de médiane "
                     f"**{nombre(impact['mediane'])} MW** et de minimum "
                     f"{nombre(impact['minimum'])} MW, soit environ "
                     f"**{nombre(impact['poids_relatif_%'], 3)} %** du niveau de "

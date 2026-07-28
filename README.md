@@ -124,8 +124,10 @@ Le creux a chuté de 60 % et la remontée du soir a été multipliée par près 
 ### L'ordre de la journée s'est inversé
 
 Le moment où le réseau travaille le moins n'est plus la nuit, mais le **milieu de
-journée**. Mesuré sans aucune borne arbitraire, en cherchant simplement l'heure
-du minimum du profil journalier :
+journée**. Mesuré en cherchant simplement l'heure du minimum du profil journalier,
+sans les fenêtres horaires arbitraires d'une première tentative (une plage de
+recherche de 10 h à 17 h reste néanmoins nécessaire, ce n'est donc pas une mesure
+« sans aucun paramètre » comme ce document l'a d'abord écrit) :
 
 | Nouvelle-Aquitaine | 2013 | 2016 | 2018 | **2019** | 2022 | 2025 |
 |---|---|---|---|---|---|---|
@@ -140,7 +142,11 @@ Ce résultat est soumis à quatre contrôles dans
 - **éolien** : retirer l'éolien en plus du solaire ne change pas le verdict ;
 - **ordre** : les 6 régions qui basculent ont toutes une couverture solaire
   supérieure à **6,3 %**, les 6 autres inférieure à **5,1 %**, sans chevauchement.
-  Corrélation entre l'année de bascule et la couverture : **r = −0,86** ;
+  Corrélation entre l'année de bascule et la couverture : **r = −0,86**.
+  ⚠️ Ce contrôle est le plus faible des quatre, et il ne faut pas s'y appuyer :
+  il porte sur **6 régions**, dont deux basculent la dernière année de la série
+  et deux sont instables. Le seuil « entre 5,1 % et 6,3 % » est donc déterminé
+  par deux régions seulement ;
 - **robustesse** : une première mesure, fondée sur des fenêtres horaires choisies
   à la main, donnait quatre années différentes selon les bornes. Elle a été
   écartée au profit de la mesure sans paramètre ci-dessus.
@@ -166,16 +172,36 @@ calcul**, dans
 
 | Hypothèse | Verdict |
 |---|---|
-| Le **pompage** s'est déplacé de la nuit vers la mi-journée | ✅ validée (r = +0,90) |
-| Le **nucléaire** module et ne tourne plus en base pure | ✅ validée (r = −0,86) |
+| Le **pompage** s'est déplacé de la nuit vers la mi-journée | ✅ validée (r = +0,90), mais attribution mal contrôlée |
+| Le **nucléaire** module et ne tourne plus en base pure | ✅ validée (r = −0,86), attribution contrôlée |
 | Les **échanges** avec l'étranger évacuent le surplus de midi | ❌ rejetée (r = −0,08) |
-| La **remontée du soir** s'accélère | ❌ rejetée (r = −0,45) |
+| La **remontée du soir** s'accélère | ✅ **validée (r = +0,89)** |
 
-**Le pompage a changé d'horaire.** L'heure du maximum, figée à 4 h 30 pendant
-douze années consécutives, bascule à **15 h en 2025**. Le stockage de mi-journée
-est multiplié par 5,6 sur la période, pendant que le stockage nocturne recule.
-On stockait la nuit avec le surplus nucléaire, on stocke désormais à midi avec le
-surplus solaire.
+> ⚠️ **Correction du 2026-07-28.** La remontée du soir était publiée ici comme
+> **rejetée** (r = −0,45). C'était un bug : le calcul de variation enjambait la
+> nuit et comparait deux journées différentes, ce qui inclinait la tendance.
+> Corrigé, r vaut **+0,89** et l'hypothèse est validée. Détail au journal.
+
+**Le pompage a changé d'horaire.** L'heure du maximum, à 4 h 30 dix années sur
+douze (5 h 00 en 2015, 2023 et 2024), bascule à **15 h en 2025**. Le stockage de
+mi-journée est multiplié par 5,6 sur la période, pendant que le stockage nocturne
+recule. On stockait la nuit avec le surplus nucléaire, on stocke désormais à midi
+avec le surplus solaire.
+
+> ⚠️ **Réserve, à lire avec ce résultat.** Le basculement à 15 h repose sur la
+> seule année **2025**, classée `Données consolidées` donc révisable. Et le
+> déplacement du pompage se produit **aussi en hiver** (×4,19) où le solaire ne
+> peut presque rien, contre ×5,86 en été : le constat est solide, son attribution
+> au solaire est la **moins** établie des trois hypothèses validées. Le nucléaire,
+> lui, passe ce témoin nettement (il ne module qu'en été).
+
+**La remontée du soir s'accélère bel et bien**, de 2 075 MW par demi-heure en
+2013 à **2 674 MW en 2025**. Trois témoins écartent l'électrification des usages :
+la rampe de la consommation **brute**, elle, ralentit (r = −0,62) ; l'accélération
+est massive en été (r = +0,95) et absente en hiver, où demande nette et
+consommation évoluent de concert. Réserve consignée : sur sept fenêtres horaires
+testées, cinq donnent exactement +0,89 et une le renforce, mais la plus large
+(14-23 h) change de signe.
 
 **Le nucléaire produit maintenant moins à midi que la nuit.** Le rapport entre
 mi-journée et nuit passe de 1,037 en 2013 à 0,956 en 2025, franchissant 1 en 2024.

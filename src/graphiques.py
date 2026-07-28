@@ -85,12 +85,20 @@ def courbes_profil(
     saison: str,
     unite: str = "MW",
     couleur: str = "#2a78d6",
+    plage_y: tuple[float, float] | None = None,
 ) -> go.Figure:
     """Profil journalier d'une saison : médiane, moyenne et éventail de quantiles.
 
     Les bandes de quantiles portent l'information utile pour un réseau, qui se
     dimensionne sur le jour le plus contraignant et non sur le jour moyen.
     L'écart entre moyenne et médiane mesure l'asymétrie de la distribution.
+
+    `plage_y` impose la même échelle verticale à plusieurs saisons. **À fournir
+    dès que les figures sont affichées côte à côte** : sans elle, Plotly cale
+    chaque panneau sur ses propres valeurs, et quatre saisons dont les niveaux
+    vont du simple au double paraissent d'amplitude comparable. La figure
+    statique équivalente utilise `sharey=True` depuis toujours ; le tableau de
+    bord ne le faisait pas (corrigé le 2026-07-28).
     """
     p = profils[profils["saison"] == saison].sort_values("heure_decimale")
     heures = p["heure_decimale"]
@@ -123,7 +131,23 @@ def courbes_profil(
         height=340, showlegend=False, **MISE_EN_PAGE,
     )
     _axes_journee(figure, unite)
+    if plage_y is not None:
+        figure.update_yaxes(range=list(plage_y))
     return figure
+
+
+def plage_commune(profils: pd.DataFrame, marge: float = 0.05) -> tuple[float, float]:
+    """Échelle verticale englobant toutes les saisons, déciles compris.
+
+    Sert à donner la même échelle à des profils affichés côte à côte, sans quoi
+    leurs amplitudes ne sont pas comparables.
+    """
+    colonnes = [c for c in ("d10", "d90", "q1", "q3", "mediane", "moyenne")
+                if c in profils.columns]
+    bas = float(profils[colonnes].min().min())
+    haut = float(profils[colonnes].max().max())
+    respiration = (haut - bas) * marge
+    return bas - respiration, haut + respiration
 
 
 def profils_par_annee(

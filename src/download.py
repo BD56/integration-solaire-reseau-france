@@ -1,7 +1,7 @@
 """Téléchargement des données éCO2mix régionales depuis ODRE.
 
 Source officielle : RTE / Enedis via Open Data Réseaux Énergies
-(https://opendata.reseaux-energies.fr — miroir API sur odre.opendatasoft.com).
+(https://opendata.reseaux-energies.fr, miroir API sur odre.opendatasoft.com).
 
 Dataset : `eco2mix-regional-cons-def` (consolidées définitives)
   - Consommation + production par filière (solaire, éolien, nucléaire, hydraulique,

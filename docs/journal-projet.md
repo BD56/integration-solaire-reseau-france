@@ -6,7 +6,117 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
-## 2026-07-28 (suite 7) : VERDICT, l'indice de ciel clair est REJETÉ
+## 2026-07-28 (suite 8) : revue contradictoire à trois, deux conclusions publiées tombent
+
+> **À lire avant de s'appuyer sur un résultat de ce dépôt.** Un conseil de revue à trois membres (un agent chargé d'attaquer, un agent neutre, l'auteur en défense) a passé le travail au crible. Consigne dure : partir du **code et des données**, n'ouvrir ce journal qu'à la fin pour confronter, et **exécuter** au lieu de lire. Les deux griefs graves ont été reproduits par l'auteur avant d'être acceptés.
+
+### 1. H4 était rejetée, elle est validée. C'est un bug, pas une nuance.
+
+`notebooks/04_equilibrage.py` appliquait `.diff()` à une trame **déjà filtrée** sur la fenêtre du soir. La première variation de chaque soirée comparait donc le créneau 21:00 de la veille au 16:00 du jour : un saut de dix-neuf heures, qui portait le maximum journalier dans **13,80 %** des journées. Son ampleur décroissant avec les années (+868 MW en 2013, +60 MW en 2025), il inclinait la tendance.
+
+| | r | Verdict |
+|---|---|---|
+| Publié | **−0,453** | rejetée, et de sens contraire |
+| `.diff()` borné à la journée | **+0,892** | **validée** |
+
+La rampe médiane du soir passe de **2 075 MW par demi-heure en 2013 à 2 674 en 2025**.
+
+**Affirmations retirées** : « la remontée du soir ne s'accélère pas » et « le système doit remonter plus haut, pas plus vite ».
+
+**Le résultat corrigé a été contrôlé avant publication**, pour ne pas remplacer une conclusion fausse par une conclusion non vérifiée :
+
+| Contrôle | Résultat | Lecture |
+|---|---|---|
+| Consommation **brute** | r = **−0,618** (1 904 → 1 575 MW) | elle **ralentit**. L'électrification des usages est écartée, elle serait visible ici et elle y est de sens contraire |
+| Été (juin à août) | demande nette r = **+0,949**, consommation r = +0,034 | l'effet est là où le solaire peut agir |
+| Hiver (décembre à février) | demande nette r = −0,958, consommation r = −0,964 | les deux évoluent de concert, aucun effet propre |
+
+⚠️ **Réserve, appliquée par la règle des bornes** : sur sept fenêtres du soir testées, cinq donnent exactement +0,892 et une le renforce (+0,949), mais la plus large, 14-23 h, **change de signe** (−0,745). À citer avec le résultat.
+
+### 2. Le rejet de l'indice de ciel clair reposait sur une comparaison inéquitable. Verdict inversé.
+
+Trouvé **indépendamment par les deux agents**, qui travaillaient en aveugle l'un de l'autre.
+
+La référence k_t et le concurrent `tch_solaire` sont des **rapports de cumuls**. L'indice, lui, était résumé en **moyenne de rapports**, ce qui donne un poids égal aux créneaux d'aube et de crépuscule où le rapport est très bruité. La comparaison n'était donc pas à base identique, contrairement à ce que l'entrée précédente affirmait.
+
+Le comble : `notebooks/07_validation_indice.py` **justifie lui-même le rapport de cumuls**, par écrit, pour k_t, quelques lignes avant d'appliquer l'inverse à l'indice.
+
+Une seconde correction s'est ajoutée : l'enveloppe portait sur J−29 à J **inclus**, donc elle contenait le jour qu'elle servait à juger (4,69 % des créneaux dépassent leur propre enveloppe). La version **strictement causale**, J−30 à J−1, supprime la fuite pour un coût nul.
+
+| Version | Médiane Spearman | Victoires contre `tch` (0,799) |
+|---|---|---|
+| Publiée (moyenne de rapports) | 0,763 | **0/12** |
+| Rapport de cumuls | 0,823 | 11/12 |
+| **Rapport de cumuls, enveloppe causale** | **0,820** | **11/12** |
+
+➡️ **Volet A : 0,820 ≥ 0,80, VALIDÉ. Volet B : UTILE.** Le test post hoc intra-mois donne 8/12, au-dessus du seuil de 7 fixé d'avance. L'indice est validé, avec un gain modeste de +0,022.
+
+**Ce qui ne change pas** : l'indice reste **circulaire pour l'explication**, donc ERA5 reste préférable comme variable explicative. Sa niche est étroite (mesurer la nébulosité quand on n'a que la production), et ce n'est plus le cas de ce projet. Il est donc validé et supplanté, ce qui n'est pas la même chose que rejeté.
+
+**Une variante a été écartée après débat** : la fenêtre **centrée** donne 0,838 et 12/12, mais elle utilise des données postérieures à la journée évaluée, ce qui est disqualifiant pour la phase de modélisation. Mes deux arguments initiaux contre elle étaient d'ailleurs faux (le protocole n'avait jamais figé l'alignement, et ma propre fenêtre fuyait déjà d'un jour) ; c'est le troisième, apporté par le conseil, qui tranche.
+
+### 3. Le « parc 90 %, ressource 10 % » confondait la ressource avec une covariance
+
+La décomposition publiée normalisait par la **somme des deux logarithmes**, alors que les maxima ne sont pas atteints par les mêmes régions (production et parc en Nouvelle-Aquitaine, facteur de charge en Provence-Alpes-Côte d'Azur). L'identité ne se ferme pas : log(19,17) = 2,9534 contre log(15,265) + log(1,377) = 3,0451.
+
+La décomposition **exacte** de la variance des logarithmes, elle, se ferme :
+
+| Terme | Part |
+|---|---|
+| Parc installé | **85,6 %** |
+| Ressource solaire **seule** | **0,8 %** |
+| Covariance parc × ressource | **13,6 %** |
+
+Corrélation entre log(parc) et log(facteur de charge) : **0,825**.
+
+➡️ Le résultat corrigé est plus intéressant que l'ancien : la ressource seule ne pèse presque rien, et le terme qui compte dit que **le parc a été construit là où le soleil est**. La conclusion qualitative (« le parc domine ») était juste, sa quantification ne l'était pas.
+
+### 4. Une affirmation fausse vivait dans le module désigné comme source de vérité
+
+`src/preparation.py` affirmait que le pic solaire tombe « à 13 h dans les deux cas » en heure locale, et se déplace en UTC. Mesuré (Nouvelle-Aquitaine, 2023-2025) :
+
+| Repère | Juin | Décembre |
+|---|---|---|
+| UTC | 12 h | 12 h |
+| Heure locale | **14 h** | **13 h** |
+
+C'est l'**inverse** : l'UTC est le repère stationnaire. Cette erreur avait été retractée dans ce journal le **2026-07-26**, mais **n'était jamais redescendue dans le code**, deux jours plus tard.
+
+Aucun résultat n'en dépendait, et la convention retenue (raisonner en heure locale) reste la bonne, pour une meilleure raison que celle invoquée : **l'objet d'étude est la demande humaine, qui suit l'horloge et non le soleil**. La géométrie solaire, elle, se calcule en UTC, et `src/analyses.py` le fait déjà.
+
+### 5. Corrections mineures appliquées
+
+| Point | Correction |
+|---|---|
+| H1 (pompage) | Le déplacement se produit **aussi en hiver** (×4,19 contre ×5,86 en été). H1 reste vraie comme constat, mais son attribution au solaire est la **moins** établie des trois, alors qu'elle était présentée comme « le résultat le plus net ». H3 (nucléaire) passe ce témoin nettement |
+| Heure du pompage | « Figée à 4 h 30 pendant douze ans » : c'est **5 h 00 en 2015, 2023 et 2024**. Le saut à 15 h en 2025 tient, mais repose sur une année `Données consolidées`, donc révisable |
+| `tch_solaire` | Monte à **172,49 %**, 56 lignes, régions du Nord. Physiquement impossible, la puissance installée de référence est en retard sur le parc réel. Documenté au dictionnaire, avec sa conséquence sur `capacite_installee()` |
+| Créneaux d'octobre | **312** et non 336 (13 bascules, pas 14). 336 est le compte de mars |
+| TEST 3 de l'indice | N'avait **pas de borne supérieure** et scorait « réussi » sur un maximum de 1,345, valeur impossible par définition. Borne haute ajoutée |
+| Somme nationale | Les 96 lignes sans éolien faisaient sommer 11 régions au lieu de 12. Corrigé **colonne par colonne** : un `min_count` global aurait effacé `pompage` et `nucleaire` avant 2021, où une case vide signifie « pas de centrale » |
+| `tco_reconstruit` | Le tableau de bord affichait du reconstruit sans le dire. Mention ajoutée à la légende |
+| Profils saisonniers | Les quatre panneaux du tableau de bord n'avaient pas la même échelle verticale, contrairement à la figure statique du même calcul. Échelle commune imposée |
+| `impact_negatifs` | Deux périmètres incohérents : « 27,21 % de la période » valait en réalité **14,29 %** sur la période affichée, et le niveau de référence était calculé sur toute la période au lieu d'avant 2020 |
+| Contrôle d'ordre (SQ2) | Repose sur **6 régions**, dont deux basculent la dernière année et deux sont instables. Le seuil « 5,1 % à 6,3 % » est fixé par deux régions. Réserve ajoutée au README |
+| « Sans aucune borne arbitraire » | Inexact : `annee_de_bascule` emploie une plage de recherche de 10 h à 17 h. Formulation corrigée |
+
+### 6. Ce qui a résisté à la revue
+
+Le nettoyage se vérifie au chiffre près, et le traitement du changement d'heure de mars est mieux prouvé par la revue que par sa propre docstring : sur les 97 paires qui diffèrent, la ligne supprimée recopie le créneau précédent dans 93 cas, la ligne gardée dans aucun.
+
+L'agrégation nationale est exacte (écart de 0,00 contre un recalcul indépendant sur 233 664 cases). La reconstruction du taux de couverture est de l'arrondi pur (au pire 0,005 point sur 1,33 million de lignes). `capacite_installee` rend 18 809 MW pour 2024 quel que soit le seuil de 1 à 30, ce n'est donc pas une manette cachée. Le tableau de bord a été lancé et vérifié : 90 combinaisons de cartes et 48 de profils sans erreur.
+
+Le basculement de 2019 tient : cinq variantes de calcul sur six, et la consommation seule ne bascule dans aucune des 12 régions sur l'échantillon complet. Réserve : la marge en 2019 n'est que de **120 MW**, soit 3,2 % du niveau nocturne. Le phénomène est solide, l'année précise l'est moins.
+
+### 7. Limite de l'exercice, à ne pas oublier
+
+Les trois membres du conseil sont **le même modèle**. Cette revue attrape les incohérences internes, les erreurs de calcul et les affirmations non étayées, et elle en a trouvé beaucoup. Elle n'attrape pas ce que trois copies ignorent également. C'est un filet, pas une garantie.
+
+---
+
+## 2026-07-28 (suite 7) : VERDICT, l'indice de ciel clair est REJETÉ (⛔ ENTRÉE PÉRIMÉE, voir suite 8)
+
+> ⛔ **Ce verdict a été RETIRÉ le jour même.** La comparaison sur laquelle il repose n'était pas à base identique, et l'indice est en réalité **validé** (0,820 contre 0,799). Entrée conservée telle quelle parce qu'un rejet erroné est un résultat aussi, et que l'effacer reviendrait à réécrire l'histoire. **Lire la suite 8 à la place.**
 
 > **État à retenir** : l'indice de ciel clair **n'apporte rien** face à une mesure triviale. Il est abandonné. Ce qui le remplace est meilleur et déjà en place : l'irradiance ERA5, via `src/meteo.py`. Le code de l'indice est conservé dans `src/analyses.py` comme trace, avec un avertissement, et ne doit pas servir.
 
