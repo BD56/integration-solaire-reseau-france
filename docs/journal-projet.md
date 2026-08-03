@@ -6,6 +6,74 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-29 : ouverture du volet prévision, question retenue et protocole de l'étape 1
+
+> **Nature de cette entrée** : elle ne contient **aucun résultat**. Elle fixe la question du volet prévision et le critère de son étape 1, avant tout téléchargement et tout calcul, en application de la règle d'`AGENTS.md` section 5 bis. Rien n'est encore lancé.
+
+### 1. La question retenue
+
+> **Quand la prévision de la veille se trompe, combien ça coûte au réseau, et dans quelles conditions ça arrive ?**
+
+Ce n'est pas la question par défaut d'un projet de prévision, qui serait « quel modèle prédit le mieux la production solaire ». Elle a été préférée pour quatre raisons : elle **n'exige de battre aucun système industriel** (on ne battra pas RTE, autant ne pas prétendre le contraire) ; elle se répond avec les 27 mois disponibles ; elle **prolonge directement le volet descriptif** au lieu de changer de sujet ; et elle est rarement traitée, là où les projets de portfolio empilent les modèles.
+
+**Le volet prédictif n'en est pas un ajout, il en est l'instrument.** Le « coût pour le réseau » est l'écart entre ce qui était prévu et ce qui s'est passé : sans prévision de la demande nette, il n'y a pas de « ce qui était prévu », donc rien à mesurer.
+
+**Cadrage** : prédire la **demande nette**, qui est le sujet du projet, et non la production solaire. Horizon **J+1**, parce que c'est un horizon de décision réel (le marché de gros se ferme à midi pour le lendemain), et non un choix de commodité.
+
+**Contrainte à dire plutôt qu'à cacher** : « combien ça coûte » suggère des euros. **Nous n'avons pas les prix.** Sans source supplémentaire, le coût se mesurera en mégawatts d'écart.
+
+### 2. Le découpage en trois étapes
+
+| Étape | Objet | État |
+|---|---|---|
+| **1** | Mesurer l'erreur de la prévision météo elle-même. Est-elle assez grosse pour que le sujet existe ? | protocole ci-dessous, **non lancée** |
+| 2 | Construire la prévision de demande nette à J+1, avec sa référence paresseuse à battre | non engagée |
+| 3 | Caractériser ses échecs : quand, de combien, dans quelles conditions. C'est le livrable | non engagée |
+
+L'étape 1 existe pour éviter de construire un modèle pendant trois semaines avant de découvrir qu'il n'y avait rien à voir.
+
+### 3. Faits déjà mesurés le 2026-07-29, à ne pas re-sonder
+
+- `historical-forecast-api.open-meteo.com` expose `shortwave_radiation_previous_day1` et `_previous_day2` : la valeur **telle qu'elle était prévue** un ou deux jours avant. Aucune fuite de données possible.
+- Ces variables ne remontent qu'à **environ le 22 janvier 2024** (vides avant), là où la prévision rétrospective « corrigée » remonte à 2018. Croisées avec ODRE, qui s'arrête au 30/04/2026 (vérifié, rien de plus récent n'est publié), le recouvrement utilisable est d'environ **27 mois, soit deux cycles saisonniers**.
+- L'archive **ERA5 accuse six jours de retard** (le 29/07/2026 elle s'arrêtait au 22/07). Elle est donc inutilisable en situation de prévision, ce qui justifie de passer par l'archive des prévisions.
+- Exemple d'écart réel, Nouvelle-Aquitaine le 15/06/2024 à 12 h UTC : prévu la veille **631 W/m²**, observé **515**, soit 23 % de surestimation.
+
+### 4. Protocole de l'étape 1
+
+**Prérequis** : télécharger l'archive des prévisions pour les 12 points, de février 2024 à avril 2026. ERA5, déjà en place, tient le rôle de vérité observée.
+
+**Critère A, sans seuil arbitraire : la prévision doit battre la paresse.**
+
+Référence paresseuse : la **persistance**, « demain ressemblera à aujourd'hui », soit l'irradiance observée la veille. Si la prévision de la veille ne prédit pas mieux l'irradiance du jour que cette persistance, elle n'apporte rien et tout ce qui suit s'effondre. Le point de comparaison est fourni par les données, aucun seuil n'est inventé.
+
+C'est l'application directe de la règle apprise à nos dépens le 2026-07-28 : confronter à la mesure paresseuse qu'on prétend remplacer.
+
+**Critère B, avec un seuil assumé : l'erreur doit peser.**
+
+L'erreur résiduelle, convertie en mégawatts de production solaire, est comparée à la **rampe du soir** (2 674 MW par demi-heure en 2025), grandeur établie par ce projet.
+
+| Erreur médiane rapportée à la rampe du soir | Verdict |
+|---|---|
+| **> 10 %** | sujet riche, on continue |
+| 3 % à 10 % | sujet mince, à rediscuter |
+| **< 3 %** | sujet inexistant, on arrête |
+
+⚠️ **Ces bornes sont une proposition de l'assistant, pas encore arbitrées par Bryan**, et ce sont un choix argumenté, pas une norme publiée. À ne pas présenter plus tard comme une référence.
+
+**Décisions de calcul fixées d'avance** : pas **horaire** (la météo l'est, les données RTE sont agrégées) ; **les 12 régions**, avec l'étendue rapportée et pas seulement la moyenne ; conversion en mégawatts par **régression de la production observée sur l'irradiance observée**, région par région, puis application de la même relation à l'irradiance prévue.
+
+### 5. Limites actées avant de voir le moindre résultat
+
+Écrites maintenant pour qu'elles ne puissent pas servir d'excuse rétrospective.
+
+- **Un point météo par région**, déjà mesuré comme grossier : deux nœuds distants d'environ 11 km ne s'accordent qu'à 0,977 en cumul journalier.
+- **La conversion en mégawatts est une approximation au premier ordre** : elle ignore la température, le vieillissement du parc et l'écrêtement.
+- **La température est volontairement écartée de cette étape**, alors qu'elle pilote le chauffage donc une part de la demande nette. Report assumé, pas oubli.
+- **27 mois, dont deux étés seulement.**
+
+---
+
 ## 2026-07-28 (suite 8) : revue contradictoire à trois, deux conclusions publiées tombent
 
 > **À lire avant de s'appuyer sur un résultat de ce dépôt.** Un conseil de revue à trois membres (un agent chargé d'attaquer, un agent neutre, l'auteur en défense) a passé le travail au crible. Consigne dure : partir du **code et des données**, n'ouvrir ce journal qu'à la fin pour confronter, et **exécuter** au lieu de lire. Les deux griefs graves ont été reproduits par l'auteur avant d'être acceptés.
