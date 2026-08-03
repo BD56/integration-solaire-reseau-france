@@ -232,6 +232,76 @@ def profil_horaire_annees(
     return figure
 
 
+def _heure_lisible(heure_decimale: float) -> str:
+    """Convertit 4,5 en « 4 h 30 » et 15,0 en « 15 h ».
+
+    Arrondir à l'heure entière effacerait la demi-heure, et le pas des données
+    étant de 30 minutes, un minimum à 4 h 30 s'afficherait « 4 h ».
+    """
+    heures = int(heure_decimale)
+    minutes = int(round((heure_decimale - heures) * 60))
+    return f"{heures} h {minutes:02d}" if minutes else f"{heures} h"
+
+
+def basculement_journee(
+    par_annee: pd.DataFrame,
+    annee_avant: int,
+    annee_apres: int,
+    titre: str,
+    unite: str = "MW",
+) -> go.Figure:
+    """Deux journées types comparées, avec le minimum de chacune marqué.
+
+    Figure d'ouverture du tableau de bord. Elle porte le résultat principal du
+    projet en une image : le moment où le réseau travaille le moins quitte la
+    nuit pour le milieu de journée.
+
+    Le minimum est cherché sur la journée entière, sans fenêtre imposée : c'est
+    lui, et non une plage choisie à la main, qui décide de l'heure affichée.
+    """
+    figure = go.Figure()
+    reperes = []
+
+    for annee, couleur, epaisseur in [
+        (annee_avant, ENCRE_SECONDAIRE, 2.0),
+        (annee_apres, "#e8952a", 3.0),
+    ]:
+        p = par_annee[par_annee["annee"] == annee].sort_values("heure_decimale")
+        if p.empty:
+            continue
+        figure.add_trace(go.Scatter(
+            x=p["heure_decimale"], y=p["mediane"], mode="lines", name=str(annee),
+            line=dict(color=couleur, width=epaisseur),
+            hovertemplate=f"<b>{annee}</b><br>%{{x:.1f}} h<br>"
+                          f"<b>%{{y:.0f}} {unite}</b><extra></extra>",
+        ))
+        creux = p.loc[p["mediane"].idxmin()]
+        reperes.append((annee, creux, couleur))
+
+    for annee, creux, couleur in reperes:
+        figure.add_trace(go.Scatter(
+            x=[creux["heure_decimale"]], y=[creux["mediane"]], mode="markers",
+            marker=dict(color=couleur, size=13, line=dict(color="white", width=2)),
+            showlegend=False,
+            hovertemplate=f"minimum {annee}<br>%{{x:.1f}} h<extra></extra>",
+        ))
+        figure.add_annotation(
+            x=creux["heure_decimale"], y=creux["mediane"],
+            text=f"<b>{annee} : {_heure_lisible(creux['heure_decimale'])}</b>",
+            showarrow=True, arrowhead=0, arrowcolor=couleur, arrowwidth=1.5,
+            ax=0, ay=42, font=dict(color=couleur, size=12),
+        )
+
+    figure.update_layout(
+        title=dict(text=titre, font=dict(color=ENCRE, size=15)),
+        height=380,
+        legend=dict(title="", orientation="h", x=0, y=1.06, font=dict(size=12)),
+        **MISE_EN_PAGE,
+    )
+    _axes_journee(figure, unite)
+    return figure
+
+
 def indicateur_annuel(
     serie: pd.Series, titre: str, unite: str = "", reference: float | None = None
 ) -> go.Figure:

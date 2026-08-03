@@ -45,6 +45,7 @@ from src.analyses import (  # noqa: E402
     verdicts_equilibrage,
 )
 from src.graphiques import (  # noqa: E402
+    basculement_journee,
     carte_chaleur,
     courbes_profil,
     indicateur_annuel,
@@ -98,12 +99,128 @@ st.sidebar.title("☀️ Solaire et réseau")
 st.sidebar.caption("Données RTE / Enedis via ODRE, pas de 30 minutes, 2013 à 2026.")
 page = st.sidebar.radio(
     "Page",
-    ["Cartes de chaleur", "Profils saisonniers", "Équilibrage", "Qualité des données"],
+    ["Accueil", "Cartes de chaleur", "Profils saisonniers", "Équilibrage",
+     "Qualité des données"],
     label_visibility="collapsed",
 )
 
 # ----------------------------------------------------------------------------
-if page == "Cartes de chaleur":
+if page == "Accueil":
+    st.title("☀️⚡ Le solaire a changé la journée du réseau électrique français")
+    st.markdown(
+        "Le photovoltaïque produit beaucoup, au milieu de la journée, et rien la "
+        "nuit. Il ne s'ajoute donc pas simplement au reste : il **creuse** ce que "
+        "le reste du système doit fournir à midi, puis le laisse **remonter "
+        "brutalement** le soir. Ce tableau de bord mesure cette transformation "
+        "sur treize ans de données officielles."
+    )
+
+    st.info(
+        "**Problématique.** Comment la montée du solaire transforme-t-elle la "
+        "demande nette d'électricité en France, et comment le système "
+        "s'adapte-t-il à son intermittence ?\n\n"
+        "La **demande nette** est ce qui reste à produire une fois retirée la "
+        "production renouvelable. C'est elle que le réseau doit réellement "
+        "couvrir, et c'est l'objet de tout ce qui suit.",
+        icon="🎯",
+    )
+
+    st.subheader("Le résultat principal, en une image")
+
+    accueil_region = "Nouvelle-Aquitaine"
+    # Les années tronquées sont écartées : 2026 s'arrête fin avril, donc elle ne
+    # contient que des mois froids et son profil n'est pas comparable aux autres.
+    base_accueil = df[
+        (df["libelle_region"] == accueil_region)
+        & (~df["annee"].isin(annees_incompletes(df)))
+    ]
+    profils_accueil = profils_par_annee(base_accueil, "demande_nette_solaire")
+    annees_dispo = sorted(profils_accueil["annee"].unique())
+    st.plotly_chart(
+        basculement_journee(
+            profils_accueil, annees_dispo[0], annees_dispo[-1],
+            f"Journée type en {accueil_region} : demande nette, "
+            f"{annees_dispo[0]} contre {annees_dispo[-1]}",
+        ),
+        width="stretch",
+    )
+    st.caption(
+        "Courbe médiane sur l'année entière. Le point marqué est le **minimum de "
+        "la journée**, cherché sans fenêtre imposée : c'est lui qui décide de "
+        "l'heure affichée, pas une plage choisie à la main."
+    )
+    st.markdown(
+        "**Le moment où le réseau travaille le moins n'est plus la nuit.** Il "
+        "était à 4 h 30 du matin, il est désormais en milieu d'après-midi. "
+        "L'ordre de la journée s'est inversé, et le basculement date de **2019** "
+        "en Nouvelle-Aquitaine."
+    )
+
+    st.subheader("Trois autres résultats")
+    col_a, col_b, col_c = st.columns(3)
+    col_a.metric("Pompage de mi-journée, 2025", "1 608 MW",
+                 "première année au-dessus de la nuit")
+    col_b.metric("Nucléaire, rapport midi sur nuit", "0,956",
+                 "passe sous 1 en 2024", delta_color="inverse")
+    col_c.metric("Remontée du soir, 2025", "2 674 MW",
+                 "+599 MW par demi-heure depuis 2013")
+    st.markdown(
+        "**Le stockage a changé d'heure.** On pompait la nuit avec le surplus "
+        "nucléaire ; en 2025, pour la première fois, on pompe davantage à midi "
+        "avec le surplus solaire.\n\n"
+        "**Le nucléaire s'efface devant le solaire.** Il produisait plus à midi "
+        "que la nuit, il produit désormais moins : il ne suit plus la "
+        "consommation, il laisse la place.\n\n"
+        "**Le soir devient plus difficile.** Quand le solaire s'efface, le reste "
+        "du système doit remonter de plus en plus vite. Trois témoins écartent "
+        "l'électrification des usages, dont le plus net : la remontée de la "
+        "consommation brute, elle, ralentit."
+    )
+
+    st.divider()
+
+    gauche, droite = st.columns(2)
+    with gauche:
+        st.subheader("Comment lire ce tableau de bord")
+        st.markdown(
+            "**Cartes de chaleur** : chaque relevé de 30 minutes, sans "
+            "agrégation. Pour voir la saisonnalité et la croissance du parc.\n\n"
+            "**Profils saisonniers** : la journée type, saison par saison puis "
+            "année par année. C'est là que se lit le basculement ci-dessus.\n\n"
+            "**Équilibrage** : ce que fait le reste du système pour absorber le "
+            "surplus de midi et compenser la chute du soir.\n\n"
+            "**Qualité des données** : les pièges du jeu, les ruptures de "
+            "convention et ce qui est reconstruit. À lire avant de conclure."
+        )
+    with droite:
+        st.subheader("Méthode")
+        st.markdown(
+            "**Les critères de validation sont écrits avant les calculs**, pour "
+            "qu'aucun seuil ne puisse être assoupli après coup.\n\n"
+            "**Les hypothèses rejetées sont conservées.** Une des quatre "
+            "hypothèses d'équilibrage est rejetée et reste affichée : un rejet "
+            "est un résultat.\n\n"
+            "**Le travail a été soumis à une revue contradictoire** qui a fait "
+            "tomber deux conclusions publiées. Elles sont corrigées, et l'erreur "
+            "est documentée plutôt qu'effacée."
+        )
+        st.caption(
+            "Détail des décisions et des erreurs dans `docs/journal-projet.md`."
+        )
+
+    st.divider()
+    st.markdown(
+        f"**Données** : [Open Data Réseaux Énergies](https://opendata.reseaux-energies.fr), "
+        "plateforme officielle de RTE et Enedis. Jeu `eco2mix-regional-cons-def`, "
+        f"**{nombre(len(df))} relevés** au pas de 30 minutes, "
+        f"{df['libelle_region'].nunique()} régions métropolitaines, "
+        f"de {df['annee'].min()} à {df['annee'].max()}. "
+        "Licence [Ouverte / Etalab](https://www.etalab.gouv.fr/licence-ouverte-open-licence). "
+        "Ce ne sont pas des données simulées."
+    )
+
+# ----------------------------------------------------------------------------
+elif page == "Cartes de chaleur":
     st.title("Cartes de chaleur")
     st.caption(
         "Une case par relevé de 30 minutes, sans aucune agrégation. "
