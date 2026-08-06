@@ -133,7 +133,7 @@ Au 2026-07-28, après revue contradictoire :
 | Volet | État |
 |---|---|
 | Nettoyage, dictionnaire, exploration | fait, vérifié au chiffre près |
-| Sous-question 1 (dynamique journalière et saisonnière) | traitée |
+| Sous-question 1 (dynamique journalière et saisonnière) | ⚠️ **NON close**, et reformulée le 2026-07-29. Elle n'était pas une question mais un sujet, donc rien ne définissait sa clôture. Matériel produit (profils, figures), aucun résultat énoncé. Protocole au journal |
 | Sous-question 2 (basculement de la demande nette) | traitée, 2019 en Nouvelle-Aquitaine, quatre contrôles |
 | Sous-question 3 (équilibrage) | traitée, 3 hypothèses validées sur 4 |
 | Tableau de bord Streamlit | fonctionnel, deux pages sur trois remplies |

@@ -6,6 +6,85 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-29 (suite) : la sous-question 1 n'était pas une question, reformulation et protocole
+
+> **Nature de cette entrée** : aucun résultat. Elle corrige une erreur de suivi, reformule la sous-question 1 et fixe les critères de sa clôture **avant tout calcul**.
+
+### 1. Deux erreurs constatées, dont une que j'ai réintroduite
+
+**La sous-question 1 n'a jamais été close.** L'entrée du 2026-07-26 le disait explicitement (« Non close »), et **aucune entrée postérieure ne la reprend**. Or `AGENTS.md` a été mis à jour le 2026-07-28 avec la mention « Sous-question 1 : traitée ». C'est faux, et c'est exactement l'erreur que ce journal avait déjà corrigée une fois. Elle a été refaite par l'assistant, et signalée par Bryan.
+
+**Et surtout : ce n'était pas une question.** Formulation d'origine :
+
+> « Dynamique journalière : la demande nette, son creux de mi-journée et sa remontée du soir, et sa déformation selon la saison. »
+
+Pas de verbe, pas de point d'interrogation. C'est un **sujet**, là où les sous-questions 2 et 3 sont de vraies questions (« ce creux se creuse-t-il ? », « comment le système compense-t-il ? »), et c'est pour cela qu'elles se sont refermées.
+
+➡️ **On ne peut pas répondre à un thème.** Rien ne définit ce que « avoir répondu » signifierait, donc le moment de conclure n'arrive jamais. Le défaut est en amont, ce n'est pas un manque de travail.
+
+**Symptôme mesurable** : les sous-questions 2 et 3 énoncent un résultat (« le minimum passe de 4 h 30 à 15 h en 2019 », quatre hypothèses et quatre verdicts). La sous-question 1 n'énonce **rien**. Elle montre des courbes, elle ne conclut pas.
+
+### 2. La reformulation retenue
+
+Structure proposée par Bryan : une **question d'entrée** lisible, dont la **réponse** est portée par deux questions tranchables.
+
+**Question affichée (A)** :
+
+> À quoi ressemble une journée type de demande nette, et comment cette forme se déforme-t-elle selon la saison ?
+
+**Porteuses de la réponse, et de la clôture :**
+
+- **(B)** Le creux de mi-journée et la remontée du soir sont-ils du même ordre en été et en hiver, ou le solaire déforme-t-il la journée différemment selon la saison ?
+- **(C)** De combien le solaire creuse-t-il la mi-journée, et cette déformation dépend-elle davantage de la **saison** ou de la **région** ?
+
+⚠️ **A reste non refermable par nature.** Ce sont B et C qui portent la condition de clôture, et c'est pourquoi eux seuls sont préenregistrés ci-dessous. Sans cela, on décrirait jusqu'à estimer avoir assez décrit, c'est-à-dire la situation actuelle.
+
+⚠️ **Réserve sur C** : « la saison ou la région » effleure la dimension géographique, reportée en phase 2. La limite est fixée ici : C dit **quel axe pèse le plus**, jamais **pourquoi telle région**. Le « pourquoi » exige la météo et appartient à la phase 2.
+
+### 3. La grandeur mesurée, et pourquoi celle-là
+
+Comparer directement des creux entre été et hiver serait trompeur : la consommation hivernale est bien plus élevée (chauffage), donc un creux plus profond en hiver ne dirait rien du solaire.
+
+**On mesure donc la déformation attribuable au solaire**, par différence entre deux profils de la même journée :
+
+    déformation = creusement(consommation) − creusement(demande nette solaire)
+
+où `creusement` est l'écart entre le niveau de nuit (2 h à 5 h) et le creux de mi-journée (10 h à 16 h), tel que déjà calculé par `profondeur_creux`.
+
+La consommation brute joue le rôle de **témoin** : elle subit la saison et les usages, pas le solaire. C'est le même dispositif que celui qui a validé H4, et il a fait ses preuves.
+
+`demande_nette_solaire` (consommation moins solaire seul) est retenue comme définition principale, parce qu'elle isole le solaire. `demande_nette` (solaire et éolien) servira de contrôle de robustesse. Le journal du 2026-07-26 reprochait justement de n'avoir utilisé qu'une seule des deux définitions.
+
+**Période préenregistrée : 2021 à 2025.** Années complètes, parc solaire déjà important, et fenêtre assez courte pour que la croissance du parc ne domine pas (cette croissance est le sujet de la sous-question 2, pas de la 1). **Les 12 régions.**
+
+### 4. Critères de clôture, écrits avant tout calcul
+
+**Critère B.** Rapport entre la déformation d'été (juin à août) et celle d'hiver (décembre à février), médiane sur les 12 régions.
+
+| Rapport été / hiver | Verdict |
+|---|---|
+| **≥ 2** | la déformation est fortement saisonnière |
+| 1,2 à 2 | modérément saisonnière |
+| **< 1,2** | non saisonnière |
+
+Ces bornes sont un choix argumenté, pas une norme. **Étalon rapporté à côté, et non arbitraire** : le rapport été / hiver de la **production solaire** elle-même. Si la déformation suit ce rapport, elle est simplement proportionnelle à la ressource ; si elle le dépasse nettement, quelque chose l'amplifie et il faudra le dire.
+
+**Critère C.** Décomposition de la variance de la déformation sur les 48 cellules région × saison, méthode établie (analyse de variance à deux facteurs sur un plan équilibré) :
+
+    var(déformation) = part saison + part région + interaction
+
+Aucun seuil arbitraire : **le facteur qui explique la plus grande part l'emporte**. Le terme d'interaction sera rapporté et non absorbé, comme l'a imposé la revue du 2026-07-28 sur la décomposition parc / ressource, où le terme croisé s'était révélé plus instructif que les termes principaux.
+
+**Prédiction enregistrée avant calcul** : la saison domine la région. Motif : le rapport été / hiver de l'ensoleillement dépasse largement l'écart d'ensoleillement entre le nord et le sud de la France. Si le calcul dit l'inverse, c'est un résultat, pas une erreur.
+
+### 5. Limites actées d'avance
+
+- La déformation par différence suppose que **la consommation brute n'est pas affectée par le solaire**. C'est faux à la marge : l'autoconsommation réduit la consommation mesurée. L'effet est petit et connu, il sera rappelé, pas corrigé.
+- Le **creusement** dépend de trois fenêtres horaires (nuit 2 h à 5 h, midi 10 h à 16 h, soir 18 h à 21 h) héritées de `profondeur_creux`. Elles seront **fait varier avant publication**, conformément à la règle des bornes.
+- 2021-2025 exclut la période où le parc était petit : le résultat décrit le système **actuel**, pas son histoire.
+
+---
+
 ## 2026-07-29 : ouverture du volet prévision, question retenue et protocole de l'étape 1
 
 > **Nature de cette entrée** : elle ne contient **aucun résultat**. Elle fixe la question du volet prévision et le critère de son étape 1, avant tout téléchargement et tout calcul, en application de la règle d'`AGENTS.md` section 5 bis. Rien n'est encore lancé.
