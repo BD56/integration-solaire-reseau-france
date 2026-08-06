@@ -110,6 +110,146 @@ def profondeur_creux(donnees: pd.DataFrame, variable: str = "demande_nette") -> 
     return pd.DataFrame(lignes)
 
 
+# ---------------------------------------------------------------------------
+# Sous-question 1 : la déformation de la journée par le solaire, et sa
+# dépendance à la saison. Protocole et critères au journal du 2026-07-29.
+# ---------------------------------------------------------------------------
+
+NUIT_CREUX, MIDI_CREUX, SOIR_CREUX = (2, 5), (10, 16), (18, 21)
+
+
+def _creusement(profil: pd.DataFrame, nuit=NUIT_CREUX, midi=MIDI_CREUX) -> float:
+    """Écart entre le niveau de nuit et le creux de mi-journée, en MW."""
+    creux = profil[profil["heure_decimale"].between(*midi)]["mediane"].min()
+    niveau_nuit = profil[profil["heure_decimale"].between(*nuit)]["mediane"].median()
+    return niveau_nuit - creux
+
+
+def deformation_solaire(
+    donnees: pd.DataFrame,
+    variable: str = "demande_nette_solaire",
+    nuit=NUIT_CREUX,
+    midi=MIDI_CREUX,
+) -> pd.DataFrame:
+    """Creusement de mi-journée **attribuable au solaire**, par région et saison.
+
+    Comparer directement des creux entre été et hiver serait trompeur : la
+    consommation hivernale est bien plus élevée (chauffage), donc un creux plus
+    profond en hiver ne dirait rien du solaire.
+
+    On mesure donc une **différence entre deux profils de la même journée** :
+
+        déformation = creusement(demande nette) − creusement(consommation)
+
+    La consommation brute joue le rôle de **témoin** : elle subit la saison et
+    les usages, mais pas le solaire. C'est le dispositif qui a validé H4.
+
+    Le signe est choisi pour qu'une valeur **positive signifie « le solaire
+    creuse la mi-journée de tant de mégawatts »**, ce qui est le sens attendu.
+    L'ordre inverse donnait des valeurs systématiquement négatives, illisibles.
+    Ce choix ne change aucun verdict : les rapports entre saisons et la
+    décomposition de variance sont identiques au signe près.
+
+    ⚠️ Limite connue, non corrigée : l'autoconsommation réduit la consommation
+    mesurée, donc le témoin est légèrement contaminé par le solaire. L'effet est
+    petit, il est rappelé plutôt qu'ajusté.
+    """
+    lignes = []
+    for (region, saison), part in donnees.groupby(
+        ["libelle_region", "saison"], observed=True
+    ):
+        profil_conso = (
+            part.groupby("heure_decimale", observed=True)["consommation"]
+            .median().rename("mediane").reset_index()
+        )
+        profil_nette = (
+            part.groupby("heure_decimale", observed=True)[variable]
+            .median().rename("mediane").reset_index()
+        )
+        creusement_conso = _creusement(profil_conso, nuit, midi)
+        creusement_nette = _creusement(profil_nette, nuit, midi)
+        lignes.append({
+            "libelle_region": region,
+            "saison": saison,
+            "creusement_consommation": creusement_conso,
+            "creusement_demande_nette": creusement_nette,
+            "deformation": creusement_nette - creusement_conso,
+            "solaire_moyen": part["solaire"].mean(),
+        })
+    return pd.DataFrame(lignes)
+
+
+def rapport_saisonnier(deformation: pd.DataFrame) -> pd.DataFrame:
+    """Critère B : la déformation d'été rapportée à celle d'hiver, par région.
+
+    L'étalon rapporté à côté n'est pas arbitraire : c'est le rapport été / hiver
+    de la **production solaire** elle-même. Si la déformation suit ce rapport,
+    elle est simplement proportionnelle à la ressource ; si elle le dépasse
+    nettement, quelque chose l'amplifie et il faut le dire.
+    """
+    table = deformation.pivot(
+        index="libelle_region", columns="saison",
+        values=["deformation", "solaire_moyen"],
+    )
+    resultat = pd.DataFrame({
+        "deformation_ete": table[("deformation", "Été")],
+        "deformation_hiver": table[("deformation", "Hiver")],
+        "solaire_ete": table[("solaire_moyen", "Été")],
+        "solaire_hiver": table[("solaire_moyen", "Hiver")],
+    })
+    resultat["rapport_deformation"] = (
+        resultat["deformation_ete"] / resultat["deformation_hiver"]
+    )
+    resultat["rapport_solaire"] = resultat["solaire_ete"] / resultat["solaire_hiver"]
+    resultat["ecart_a_l_etalon"] = (
+        resultat["rapport_deformation"] - resultat["rapport_solaire"]
+    )
+    return resultat.sort_values("rapport_deformation", ascending=False)
+
+
+def decomposition_saison_region(deformation: pd.DataFrame) -> dict:
+    """Critère C : la déformation dépend-elle plus de la saison ou de la région ?
+
+    Décomposition de la variance sur le plan équilibré région × saison, méthode
+    établie (analyse de variance à deux facteurs) :
+
+        var(déformation) = part saison + part région + interaction
+
+    Aucun seuil arbitraire : le facteur qui explique la plus grande part
+    l'emporte. Le terme d'**interaction est rapporté et non absorbé**, la revue
+    du 2026-07-28 ayant montré sur la décomposition parc / ressource qu'un terme
+    croisé peut être plus instructif que les termes principaux.
+    """
+    valeurs = deformation["deformation"]
+    moyenne = valeurs.mean()
+
+    effet_saison = deformation.groupby("saison", observed=True)["deformation"].mean() - moyenne
+    effet_region = deformation.groupby("libelle_region", observed=True)["deformation"].mean() - moyenne
+
+    attendu = (
+        moyenne
+        + deformation["saison"].map(effet_saison).to_numpy()
+        + deformation["libelle_region"].map(effet_region).to_numpy()
+    )
+    residu = valeurs.to_numpy() - attendu
+
+    n_saisons = deformation["saison"].nunique()
+    n_regions = deformation["libelle_region"].nunique()
+
+    somme_totale = float(((valeurs - moyenne) ** 2).sum())
+    somme_saison = float(n_regions * (effet_saison ** 2).sum())
+    somme_region = float(n_saisons * (effet_region ** 2).sum())
+    somme_interaction = float((residu ** 2).sum())
+
+    return {
+        "part_saison_%": 100 * somme_saison / somme_totale,
+        "part_region_%": 100 * somme_region / somme_totale,
+        "part_interaction_%": 100 * somme_interaction / somme_totale,
+        "controle_somme_%": 100 * (somme_saison + somme_region + somme_interaction) / somme_totale,
+        "facteur_dominant": "saison" if somme_saison > somme_region else "région",
+    }
+
+
 #: Centres approximatifs des régions métropolitaines (latitude, longitude).
 CENTRES_REGIONS = {
     "Auvergne-Rhône-Alpes": (45.4, 4.6),

@@ -6,6 +6,51 @@ Objectif : garder une trace lisible par toute personne ou assistant qui reprend 
 
 ---
 
+## 2026-07-29 (suite 2) : sous-question 1, la partie B est close
+
+Exécution du protocole de l'entrée précédente. Code dans `src/analyses.py` (`deformation_solaire`, `rapport_saisonnier`, `decomposition_saison_region`) et `notebooks/08_deformation_saisonniere.py`. Période 2021-2025, 12 régions.
+
+### 1. Réponse à B
+
+> **B : le creux de mi-journée est-il du même ordre en été et en hiver ?**
+
+**Non. La déformation est environ 4,4 fois plus forte en été qu'en hiver, et cet écart est celui de la ressource solaire elle-même (4,0).** Le solaire déforme donc la journée **proportionnellement à ce qu'il produit**, sans amplification ni amortissement notable.
+
+Les deux nombres sont des **médianes des 12 rapports régionaux**, construits à l'identique : pour chaque région, sa valeur d'été divisée par sa valeur d'hiver, puis médiane sur les 12.
+
+| Grandeur | Médiane des 12 rapports été / hiver | Étendue régionale |
+|---|---|---|
+| Déformation attribuable au solaire | **4,38** | 1,78 (Provence-Alpes-Côte d'Azur) à 7,58 (Hauts-de-France) |
+| Production solaire | **3,95** | 2,45 à 4,84 |
+
+### 2. Réserves à publier avec le résultat
+
+**Le nombre exact ne tient pas, le constat oui.** En faisant varier les fenêtres horaires (règle des bornes), le rapport oscille entre **2,70 et 5,47**. C'est la **comparaison des deux rapports** qui est stable, pas le 4,38 isolé. À citer comme tel.
+
+**Contrôle de robustesse réussi.** Avec l'éolien inclus dans la demande nette, le rapport tombe à **2,66**. C'est le sens attendu : l'éolien produit davantage en hiver, il comble une partie du creux hivernal et écrase l'écart entre saisons.
+
+### 3. Le seuil de 2 est abandonné, et pourquoi
+
+Le protocole fixait un seuil de 2 pour déclarer la déformation « fortement saisonnière ». Il est formellement franchi (4,38), mais **il est abandonné parce qu'il ne pouvait pratiquement pas échouer** : la ressource solaire variant déjà d'un facteur 3,95 entre les saisons, toute grandeur suivant à peu près le solaire le dépasse mécaniquement.
+
+C'est la règle du projet, *vérifier qu'un test peut échouer*, appliquée à mon propre critère. L'objection ne dépend pas du résultat obtenu : elle était valable avant le calcul.
+
+L'étalon, lui, **pouvait** échouer : le rapport mesuré aurait pu valoir 8 ou 1,5. C'est donc lui qui porte la réponse.
+
+⚠️ Le seuil est conservé dans le protocole plutôt qu'effacé : un critère mal conçu et détecté est une information sur la méthode.
+
+### 4. Correction de forme
+
+Le signe de l'indicateur a été inversé après le premier calcul, pour qu'une valeur positive signifie « le solaire creuse la mi-journée de tant de mégawatts ». Aucun verdict n'en dépend : rapports et décomposition de variance sont identiques au signe près.
+
+### 5. Reste ouvert
+
+**La partie C est mal posée**, et le résultat obtenu (région 81,2 %, saison 12,0 %) est presque circulaire : la déformation étant mesurée en mégawatts absolus et les parcs régionaux différant d'un facteur 45, la domination de la région était garantie d'avance. Une normalisation est nécessaire. À traiter.
+
+**Une prédiction s'est révélée fausse** : le protocole enregistrait « la saison domine la région ». C'est l'inverse, mais sous une mesure mal choisie, donc le résultat n'est pas interprétable en l'état.
+
+---
+
 ## 2026-07-29 (suite) : la sous-question 1 n'était pas une question, reformulation et protocole
 
 > **Nature de cette entrée** : aucun résultat. Elle corrige une erreur de suivi, reformule la sous-question 1 et fixe les critères de sa clôture **avant tout calcul**.
